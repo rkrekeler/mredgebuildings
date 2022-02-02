@@ -6,7 +6,7 @@
 #'
 #' @author Robin Krekeler, Antoine Levesque
 #'
-#' @reference https://doi.org/10.1016/j.energy.2011.10.044
+#' @references https://doi.org/10.1016/j.energy.2011.10.044
 #'
 #' @param subtype data type
 #'

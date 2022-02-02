@@ -21,7 +21,8 @@ Suggests:
   covr,
   lucode2,
   testthat
-Imports: 
+Imports:
+  countrycode,
   dplyr,
   quitte,
   rlang,
