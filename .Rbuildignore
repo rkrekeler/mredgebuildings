@@ -6,3 +6,4 @@
 ^\.github$
 ^.*\.zenodo.json$
 ^codecov\.yml$
+^workflow$
