@@ -10,7 +10,7 @@
 #' @author Antoine Levesque, Pascal Führlich
 #'
 #' @references Enerdata. Odyssee-Mure database. https://www.odyssee-mure.eu/
-#' @importFrom dplyr mutate filter rename left_join select group_by summarise ungroup across %>%
+#' @importFrom dplyr mutate filter rename left_join select group_by summarise ungroup across %>% mutate_
 #' @importFrom madrat toolCountry2isocode
 #' @importFrom quitte revalue.levels interpolate_missing_periods aggregate_map getRegs
 #' @importFrom rlang .data syms
@@ -19,7 +19,7 @@
 readOdyssee <- function(subtype = c("enduseShares", "carrierShares")) {
   subtype <- match.arg(subtype)
 
-  # TODO ensure input files are available on cluster
+  # TODO ensure input files are available on cluster -> regionalmapping
   services <- read.csv("export_enerdata_7793_105638_services.csv", skip = 1, na.strings = c("n.a.", ""))
   households <- read.csv("export_enerdata_7793_105710_households.csv", skip = 1, na.strings = c("n.a.", ""))
   odyssee <- rbind(households, services)
@@ -75,6 +75,16 @@ readOdyssee <- function(subtype = c("enduseShares", "carrierShares")) {
     filter(!.data[["enduse"]]  %in% redundantEnduse,
            !.data[["carrier"]] %in% redundantCarrier)
 
+  calcShares <- function(data, colShare) {
+    cols <- setdiff(colnames(data), c(colShare, "value"))
+
+    res <- data %>%
+      group_by(across(all_of(cols))) %>%
+      mutate(value = .data[["value"]] / sum(.data[["value"]])) %>%
+      ungroup() %>%
+      return()
+  }
+
   computeSharesAndComplete <- function(df, .groups) {
     grReg <- c("region", "period", .groups)
     grAgg <- .groups
@@ -128,25 +138,4 @@ readOdyssee <- function(subtype = c("enduseShares", "carrierShares")) {
          stop(paste("Invalid subtype:", subtype)))
 
   return(as.magpie(odyssee))
-}
-
-
-#' @importFrom lazyeval interp
-#' @importFrom dplyr mutate_ ungroup group_by ungroup across %>%
-#' @importFrom stats setNames
-#' @importFrom tidyselect all_of
-#'
-#' @author Antoine Levesque
-calcShares <- function(data, colShare, colVal = "value", ignoreColumns = NULL) {
-  # TODO is this function necessary?
-  cols <- setdiff(colnames(data), c(colShare, colVal, ignoreColumns))
-  form <- interp(~ x / sum(x, na.rm = TRUE), x = as.name(colVal))
-
-  # TODO: find a way to replace mutate_ by mutate
-  res <- data %>%
-    group_by(across(all_of(cols))) %>%
-    mutate_(.dots = setNames(list(form), colVal)) %>%
-    ungroup()
-
-  return(res)
 }
