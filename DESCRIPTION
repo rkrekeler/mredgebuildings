@@ -1,8 +1,8 @@
 Package: mredgebuildings
 Type: Package
 Title: Prepare data to be used by the EDGE-Buildings model
-Version: 0.0.1
-Date: 2022-01-21
+Version: 0.0.1.9002
+Date: 2022-02-02
 Authors@R: c(person("Robin", "Krekeler", email = "robin.krekeler@pik-potsdam.de", role = c("aut","cre"),
                     comment = c(ORCID = "0000-0003-1818-3186")),
              person("Pascal", "Führlich", email = "pascal.fuehrlich@pik-potsdam.de", role = c("aut")))
@@ -15,8 +15,14 @@ RoxygenNote: 7.1.2
 Depends:
   madrat,
   magclass,
-  mrcommons
+  mrcommons,
+  mrremind
 Suggests:
   covr,
   lucode2,
   testthat
+Imports: 
+  dplyr,
+  quitte,
+  rlang,
+  tidyr

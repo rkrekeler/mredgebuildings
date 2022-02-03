@@ -1,8 +1,8 @@
 # Prepare data to be used by the EDGE-Buildings model
 
-R package **mredgebuildings**, version **0.0.1**
+R package **mredgebuildings**, version **0.0.1.9002**
 
-[![CRAN status](https://www.r-pkg.org/badges/version/mredgebuildings)](https://cran.r-project.org/package=mredgebuildings)  [![R build status](https://github.com/pik-piam/mredgebuildings/workflows/check/badge.svg)](https://github.com/pik-piam/mredgebuildings/actions) [![codecov](https://codecov.io/gh/pik-piam/mredgebuildings/branch/master/graph/badge.svg)](https://codecov.io/gh/pik-piam/mredgebuildings) 
+[![CRAN status](https://www.r-pkg.org/badges/version/mredgebuildings)](https://cran.r-project.org/package=mredgebuildings)  [![R build status](https://github.com/pik-piam/mredgebuildings/workflows/check/badge.svg)](https://github.com/pik-piam/mredgebuildings/actions) [![codecov](https://codecov.io/gh/pik-piam/mredgebuildings/branch/master/graph/badge.svg)](https://app.codecov.io/gh/pik-piam/mredgebuildings) 
 
 ## Purpose and Functionality
 
@@ -38,7 +38,7 @@ In case of questions / problems please contact Robin Krekeler <robin.krekeler@pi
 
 To cite package **mredgebuildings** in publications use:
 
-Krekeler R, Führlich P (2022). _mredgebuildings: Prepare data to be used by the EDGE-Buildings model_. R package version 0.0.1, <URL: https://github.com/pik-piam/mredgebuildings>.
+Krekeler R, Führlich P (2022). _mredgebuildings: Prepare data to be used by the EDGE-Buildings model_. R package version 0.0.1.9002, <URL: https://github.com/pik-piam/mredgebuildings>.
 
 A BibTeX entry for LaTeX users is
 
@@ -47,7 +47,7 @@ A BibTeX entry for LaTeX users is
   title = {mredgebuildings: Prepare data to be used by the EDGE-Buildings model},
   author = {Robin Krekeler and Pascal Führlich},
   year = {2022},
-  note = {R package version 0.0.1},
+  note = {R package version 0.0.1.9002},
   url = {https://github.com/pik-piam/mredgebuildings},
 }
 ```
