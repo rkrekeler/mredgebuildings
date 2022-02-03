@@ -15,7 +15,7 @@
 #'
 #' @importFrom madrat readSource calcOutput
 #' @importFrom quitte as.quitte calc_addVariable
-#' @importFrom dplyr filter mutate select anti_join group_by left_join
+#' @importFrom dplyr filter mutate select anti_join group_by left_join %>%
 #' @importFrom rlang .data
 #' @importFrom magclass mbind as.magpie collapseDim
 #' @importFrom tidyr spread
