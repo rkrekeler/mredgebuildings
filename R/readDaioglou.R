@@ -27,22 +27,22 @@ readDaioglou <- function(subtype = "specific floor space") {
   data <- read.csv("Household_Characteristics3.csv",
                    stringsAsFactors = FALSE,
                    row.names = NULL) %>%
-    select("region" = "Country",
-           "period" = "Year",
-           "demographic" = "Demographic",
-           "quintile" = "Quintile",
-           "population" = "Population",
-           "household size" = "HHsize.cap.HH",
-           "specific floor space" = "Floorspace.cap.m.2.cap",
-           "population density" = "Population.Density.cap.km.2",
-           "gini" = "GINI",
-           "household expenditure" = "Household.Expenditure.PPP.2005.Cap",
-           "source" = "Sources") %>%
-    mutate("quintile" = replace_na(.data[["quintile"]], 0),
-           "population" = asNum(.data[["population"]]),
-           "population density" = asNum(.data[["population density"]]),
-           "household expenditure" = asNum(.data[["household expenditure"]]),
-           "source" = gsub("\\.", "", .data[["source"]])) %>%
+    select(region = "Country",
+           period = "Year",
+           demographic = "Demographic",
+           quintile = "Quintile",
+           population = "Population",
+           `household size` = "HHsize.cap.HH",
+           `specific floor space` = "Floorspace.cap.m.2.cap",
+           `population density` = "Population.Density.cap.km.2",
+           gini = "GINI",
+           `household expenditure` = "Household.Expenditure.PPP.2005.Cap",
+           source = "Sources") %>%
+    mutate(quintile = replace_na(.data[["quintile"]], 0),
+           population = asNum(.data[["population"]]),
+           `population density` = asNum(.data[["population density"]]),
+           `household expenditure` = asNum(.data[["household expenditure"]]),
+           source = gsub("\\.", "", .data[["source"]])) %>%
     gather("variable", "value",
            -"region", -"period", -"demographic", -"quintile", -"source") %>%
     filter(!is.na(.data[["value"]]))
@@ -57,7 +57,7 @@ readDaioglou <- function(subtype = "specific floor space") {
   }
 
   data <- data %>%
-    group_by(across(c(-"value"))) %>%
+    group_by(across(-"value")) %>%
     summarise(value = mean(.data[["value"]]), .groups = "drop") %>%
     as.quitte() %>%
     as.magpie() %>%
