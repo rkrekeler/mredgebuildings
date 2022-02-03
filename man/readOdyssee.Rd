@@ -4,7 +4,7 @@
 \alias{readOdyssee}
 \title{Read Odyssee data base}
 \usage{
-readOdyssee(subtype = "enduseShares")
+readOdyssee(subtype = c("enduseShares", "carrierShares"))
 }
 \arguments{
 \item{subtype}{type of result (\code{enduseShares} or \code{carrierShares})}
@@ -21,5 +21,5 @@ Calculates end use or carrier shares for European EDGE regions.
 Enerdata. Odyssee-Mure database. https://www.odyssee-mure.eu/
 }
 \author{
-Pascal Führlich, Antoine Levesque
+Antoine Levesque, Pascal Führlich
 }
