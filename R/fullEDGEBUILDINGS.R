@@ -35,7 +35,7 @@ fullEDGEBUILDINGS <- function(rev = 0) {
   calcOutput("FloorspacePast",                        aggregate = FALSE, file = "f_floorspace.cs4r")
 
   # climate data ---------------------------------------------------------------
-  for (tlim in as.character(17:25)) {
+  for (tlim in 17:25) {
     calcOutput("HDDCDD", tlimit = tlim, aggregate = FALSE, file = paste0("f_hddcdd_", tlim, ".cs4r"))
   }
 }

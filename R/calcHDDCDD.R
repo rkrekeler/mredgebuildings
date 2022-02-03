@@ -2,7 +2,7 @@
 #'
 #' smoothes the HDD and CDD scenario data
 #'
-#' @param tlimit Temperature threshold for computing HDD and CDD: 18, 21 or 25
+#' @param tlimit Temperature threshold for computing HDD and CDD
 #'
 #' @author Antoine Levesque
 #'
@@ -14,6 +14,8 @@
 #' @export
 
 calcHDDCDD <- function(tlimit = 18) {
+
+  stopifnot(as.character(tlimit) %in% as.character(17:25))
 
   data <- readSource("HDDCDD", subtype = tlimit)
 
