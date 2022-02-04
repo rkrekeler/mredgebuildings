@@ -4,7 +4,7 @@
 \alias{readOdyssee}
 \title{Read Odyssee data base}
 \usage{
-readOdyssee(subtype = c("enduseShares", "carrierShares"))
+readOdyssee()
 }
 \arguments{
 \item{subtype}{type of result (\code{enduseShares} or \code{carrierShares})}
