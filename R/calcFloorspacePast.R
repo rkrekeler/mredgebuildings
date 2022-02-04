@@ -15,7 +15,7 @@
 #'
 #' @importFrom madrat readSource calcOutput
 #' @importFrom quitte as.quitte calc_addVariable
-#' @importFrom dplyr filter mutate select anti_join group_by left_join
+#' @importFrom dplyr filter mutate select anti_join group_by left_join %>%
 #' @importFrom rlang .data
 #' @importFrom magclass mbind as.magpie collapseDim
 #' @importFrom tidyr spread
@@ -29,7 +29,7 @@ calcFloorspacePast <- function() {
   floorPerCap <- function(floor, pop) {
     floor %>%
       rbind(pop) %>%
-      calc_addVariable("specific floor space" = "`floor space` / population",
+      calc_addVariable(`specific floor space` = "`floor space` / population",
                        units = "m2/cap", only.new = TRUE) %>%
       mutate(demographic = "Total")
   }
@@ -103,7 +103,7 @@ calcFloorspacePast <- function() {
     mutate(variable = as.factor(.data[["variable"]])) %>%
     rbind(urbanshare) %>%
     as.data.frame() %>%
-    calc_addVariable("specific floor space" =
+    calc_addVariable(`specific floor space` =
                        "`specific floor space_Urban` * urbanPop +
                         `specific floor space_Rural` * (1 - urbanPop)",
                      units = "m2/cap", only.new = TRUE) %>%
