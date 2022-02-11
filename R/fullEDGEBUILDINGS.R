@@ -29,8 +29,8 @@ fullEDGEBUILDINGS <- function(rev = 0) {
 
   # energy ---------------------------------------------------------------------
   # move calcIO to mrcommons
-  calcOutput("IO", subtype = "output_EDGE_buildings", aggregate = FALSE, file = "f_edge_buildings.cs4r")
-  calcOutput("IO", subtype = "output_EDGE",           aggregate = FALSE, file = "f_edge_stationary.cs4r")
+  calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", aggregate = FALSE, file = "f_edge_buildings.cs4r")
+  calcOutput("IOEdgeBuildings", subtype = "output_EDGE",           aggregate = FALSE, file = "f_edge_stationary.cs4r")
   calcOutput("IEAPFU",                                aggregate = FALSE, file = "f_iea_pfu.cs4r")
   calcOutput("FloorspacePast",                        aggregate = FALSE, file = "f_floorspace.cs4r")
 

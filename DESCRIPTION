@@ -16,8 +16,7 @@ RoxygenNote: 7.1.2
 Depends:
   madrat(>= 2.8.1),
   magclass,
-  mrcommons,
-  mrremind
+  mrcommons
 Imports:
   dplyr,
   quitte,
