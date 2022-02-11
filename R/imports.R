@@ -1,2 +1,2 @@
-#' @import madrat magclass mrcommons mrremind
+#' @import madrat magclass mrcommons
 NULL
