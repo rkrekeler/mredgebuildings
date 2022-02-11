@@ -1,28 +1,30 @@
-Package: mredgebuildings
 Type: Package
+Package: mredgebuildings
 Title: Prepare data to be used by the EDGE-Buildings model
 Version: 0.0.1.9002
 Date: 2022-02-02
-Authors@R: c(person("Robin", "Krekeler", email = "robin.krekeler@pik-potsdam.de", role = c("aut","cre"),
-                    comment = c(ORCID = "0000-0003-1818-3186")),
-             person("Pascal", "Führlich", email = "pascal.fuehrlich@pik-potsdam.de", role = c("aut")),
-             person("Antoine", "Levesque", role = c("aut")))
+Authors@R: c(
+    person("Robin", "Krekeler", , "robin.krekeler@pik-potsdam.de", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-1818-3186")),
+    person("Pascal", "Führlich", , "pascal.fuehrlich@pik-potsdam.de", role = "aut"),
+    person("Antoine", "Levesque", role = "aut")
+  )
 Description: Prepare data to be used by the EDGE-Buildings model.
-URL: https://github.com/pik-piam/mredgebuildings
 License: MIT + file LICENSE
+URL: https://github.com/pik-piam/mredgebuildings
+Depends:
+    madrat(>= 2.8.1),
+    magclass,
+    mrcommons (>= 1.6.7)
+Imports:
+    dplyr,
+    quitte,
+    rlang,
+    tidyr
+Suggests:
+    covr,
+    lucode2,
+    testthat
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
-Depends:
-  madrat(>= 2.8.1),
-  magclass,
-  mrcommons
-Imports:
-  dplyr,
-  quitte,
-  rlang,
-  tidyr
-Suggests:
-  covr,
-  lucode2,
-  testthat
