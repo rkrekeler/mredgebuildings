@@ -7,7 +7,7 @@
 calcHDDCDD(tlimit = 18)
 }
 \arguments{
-\item{tlimit}{Temperature threshold for computing HDD and CDD: 18, 21 or 25}
+\item{tlimit}{Temperature threshold for computing HDD and CDD}
 }
 \description{
 smoothes the HDD and CDD scenario data

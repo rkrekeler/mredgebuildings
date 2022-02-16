@@ -14,6 +14,9 @@ Global data on population, household size, floor space per capita (m2/cap),
 population density (cap/km2), GINI and household expenditures (PPP2005/cap)
 from various sources. Quintile 0 stands for the entire population.
 }
+\references{
+https://doi.org/10.1016/j.energy.2011.10.044
+}
 \author{
 Robin Krekeler, Antoine Levesque
 }
