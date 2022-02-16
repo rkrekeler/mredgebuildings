@@ -1,9 +1,8 @@
-#' @importFrom dplyr mutate filter rename left_join select group_by summarise ungroup across %>% mutate_
+#' @importFrom dplyr mutate filter rename left_join select group_by summarise ungroup across %>% all_of one_of
 #' @importFrom madrat readSource toolCountry2isocode toolGetMapping
 #' @importFrom quitte revalue.levels interpolate_missing_periods aggregate_map getRegs
 #' @importFrom rlang .data syms
 #' @importFrom tidyr replace_na complete separate
-#' @importFrom tidyselect all_of one_of
 calcOdyssee <- function(subtype = c("enduseShares", "carrierShares")) {
   subtype <- match.arg(subtype)
 
