@@ -4,7 +4,6 @@
 #' residential (households) and commercial (services) buildings in Europe.
 #' Calculates end use or carrier shares for European EDGE regions.
 #'
-#' @param subtype type of result (\code{enduseShares} or \code{carrierShares})
 #' @returns data.frame with historic enduse or carrier shares
 #'
 #' @author Antoine Levesque, Pascal Führlich
