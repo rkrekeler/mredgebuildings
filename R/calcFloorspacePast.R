@@ -13,11 +13,12 @@
 #'
 #' @author Robin Krekeler, Antoine Levesque
 #'
-#' @importFrom madrat readSource calcOutput
+#' @importFrom madrat readSource calcOutput toolCountryFill
 #' @importFrom quitte as.quitte calc_addVariable
 #' @importFrom dplyr filter mutate select anti_join group_by left_join %>%
+#' ungroup
 #' @importFrom rlang .data
-#' @importFrom magclass mbind as.magpie collapseDim
+#' @importFrom magclass mbind as.magpie collapseDim mselect
 #' @importFrom tidyr spread
 #' @export
 
@@ -45,14 +46,14 @@ calcFloorspacePast <- function() {
     mutate(variable = "specific floor space",
            unit = "m2/cap")
 
-  # drop ESP and PRT from EEA data (to high uncertainty)
+  # EEA data: drop ESP and PRT (too high uncertainty)
   eea <- readSource("EEAfloorspace") %>%
     as.quitte(na.rm = TRUE) %>%
     filter(!.data[["region"]] %in% c("ESP", "PRT")) %>%
     mutate(variable = "floor space",
            unit = "million m2")
 
-  # take only India from IEA
+  # IEA data: take only India
   ind <- readSource("IEAfloorspace", convert = FALSE) %>%
     as.quitte() %>%
     filter(.data[["region"]] == "India",
@@ -99,10 +100,10 @@ calcFloorspacePast <- function() {
     filter(!any(.data[["demographic"]] == "Total"),
            any(.data[["demographic"]] == "Rural"),
            any(.data[["demographic"]] == "Urban")) %>%
+    ungroup() %>%
     unite("variable", "variable", "demographic") %>%
-    mutate(variable = as.factor(.data[["variable"]])) %>%
     rbind(urbanshare) %>%
-    as.data.frame() %>%
+    as.quitte() %>%
     calc_addVariable(`specific floor space` =
                        "`specific floor space_Urban` * urbanPop +
                         `specific floor space_Rural` * (1 - urbanPop)",
@@ -115,9 +116,14 @@ calcFloorspacePast <- function() {
     filter(.data[["demographic"]] == "Total") %>%
     as.quitte() %>%
     as.magpie() %>%
-    collapseDim()
+    collapseDim() %>%
+    toolCountryFill(verbosity = 2)
 
-  pop <- collapseDim(as.magpie(as.quitte(pop)))
+  pop <- pop %>%
+    as.quitte() %>%
+    as.magpie() %>%
+    mselect(region = getItems(data, 1), period = getItems(data, 2)) %>%
+    collapseDim()
 
 
   return(list(x = data,
