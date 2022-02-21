@@ -38,7 +38,7 @@ In case of questions / problems please contact Robin Krekeler <robin.krekeler@pi
 
 To cite package **mredgebuildings** in publications use:
 
-Krekeler R, Führlich P, Levesque A (2022). _mredgebuildings: Prepare data to be used by the EDGE-Buildings model_. R package version 0.1.0.9001.
+Krekeler R, Führlich P, Levesque A (2022). _mredgebuildings: Prepare data to be used by the EDGE-Buildings model_. R package version 0.1.1.
 
 A BibTeX entry for LaTeX users is
 
@@ -47,6 +47,6 @@ A BibTeX entry for LaTeX users is
   title = {mredgebuildings: Prepare data to be used by the EDGE-Buildings model},
   author = {Robin Krekeler and Pascal Führlich and Antoine Levesque},
   year = {2022},
-  note = {R package version 0.1.0.9001},
+  note = {R package version 0.1.1},
 }
 ```
