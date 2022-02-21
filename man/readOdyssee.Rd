@@ -6,9 +6,6 @@
 \usage{
 readOdyssee()
 }
-\arguments{
-\item{subtype}{type of result (\code{enduseShares} or \code{carrierShares})}
-}
 \value{
 data.frame with historic enduse or carrier shares
 }
