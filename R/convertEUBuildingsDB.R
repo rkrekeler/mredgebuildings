@@ -23,12 +23,16 @@ convertEUBuildingsDB <- function(x, subtype) {
 
   # unit conversion
   unitConversion <- inline.data.frame(
-    "from;     to; factor",
-    "Mm²;      m2; 1E6",
-    "m²;       m2; 1",
-    "thousand; 1;  1E3",
-    "%;        1;  1E-2",
-    "index;    1;  1")
+    "from;     to;    factor",
+    "Mm²;      m2;    1", # per dwelling
+    "m²;       m2;    1",
+    "thousand; 1;     1E3",
+    "%;        1;     1E-2",
+    "index;    1;     1",
+    "No-of;    1;     1",
+    "Mtoe;     EJ;    0.041868",
+    "MJ/kg;    MJ/kg; 1"
+  )
   uTail <- function(u) paste0("_", u, "$")
   uConv <- function(unit, col) {
     unlist(unitConversion[unitConversion$from == unit, col])
@@ -48,6 +52,9 @@ convertEUBuildingsDB <- function(x, subtype) {
   # drop EU sum and rename regions
   data <- data["EU", , invert = TRUE]
   getItems(data, 1) <- toolCountry2isocode(getItems(data, 1))
+
+  # fill missing regions with NA
+  data <- toolCountryFill(data, verbosity = 2)
 
   if (identical(variable, as.character(NA))) {
     return(data)
@@ -73,8 +80,6 @@ convertEUBuildingsDB <- function(x, subtype) {
       stop("'", subtype, "' is an invalid subtype.")
   )
 
-  # fill missing regions with NA
-  data <- toolCountryFill(data, verbosity = 2)
 
   return(data)
 }

@@ -1,15 +1,16 @@
 #' convertGDL
 #'
-#' Drop subnational data but keep other subgroups (i.e. rural/urban, income quartiles)
+#' Drop subnational data but keep other subgroups (i.e. rural/urban, income
+#' quartiles)
 #'
 #' @param subtype <database>.<variable>
 #' @param x MAgPIE object with data from EU Buildings Database
-#' @return clean MAgPIE object with
+#' @return clean MAgPIE object with data from EU Buildings Database
 #'
 #' @author Robin Krekeler
 #'
 #' @importFrom magclass getItems getItems<- add_dimension getSets<-
-#' toolCountryFill
+#' @importFrom madrat toolCountryFill
 #' @importFrom dplyr %>% filter mutate
 #' @importFrom rlang .data
 #' @importFrom quitte as.quitte replace_column

@@ -9,7 +9,7 @@
 #' @author Robin Krekeler
 #'
 #' @importFrom magclass getItems getItems<- add_dimension getSets<-
-#' toolCountryFill
+#' @madrat toolCountryFill
 #' @importFrom dplyr %>% filter mutate
 #' @importFrom rlang .data
 #' @importFrom quitte as.quitte replace_column

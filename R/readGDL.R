@@ -32,7 +32,7 @@ readGDL <- function(subtype) {
 
   # split subtype
   database <- gsub("\\..*$", "", subtype)
-  variable <- ifelse(database == subtype, NULL, gsub("^.*\\.", "", subtype))
+  variable <- if (database == subtype) {NULL} else {gsub("^.*\\.", "", subtype)}
 
   # raw data
   data <- read.csv(switch(database,

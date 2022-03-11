@@ -25,7 +25,7 @@
 #' @importFrom magclass as.magpie mselect getNames dimSums getItems
 #' @export
 
-readEUBuildingsDB <- function(subtype) {
+readEUBuildingsDB <- function(subtype = "") {
 
   # split subtype
   category <- strsplit(subtype, ".", fixed = TRUE)[[1]][1]
@@ -52,10 +52,13 @@ readEUBuildingsDB <- function(subtype) {
   }))
 
   # drop meta data, merge variable and unit, convert to magpie
+  # drop EU region as it contains duplicates
   data <- data %>%
     select(matches("period|region|variable|unit|\\d{4}")) %>%
     gather("period", "value", matches("\\d{4}")) %>%
-    filter(!is.na(.data[["value"]])) %>%
+    filter(!is.na(.data[["value"]]),
+           .data[["region"]] != "EU") %>%
+    mutate(unit = gsub("\\. | ", "-", .data[["unit"]])) %>%
     unite("variable", "variable", "unit") %>%
     as.quitte() %>%
     as.magpie()
