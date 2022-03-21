@@ -1,13 +1,14 @@
 #' convertDaioglou
 #'
 #' Tidy data from Daioglou et al. 2012. Currently, only the specific floor
-#' space (m2/cap) is available. UN sources are dropped, if there is data from
-#' other sources for the same region. For the remaining data, if there is data
-#' from multiple UN Source for a region and period (i.e. different cities),
-#' the average of those sources is considered. This neglects the differences in
-#' population size of the cities. Selected data points are removed additionally.
+#' space (m2/cap) is available from household data file. UN sources are dropped,
+#' if there is data from other sources for the same region. For the remaining
+#' data, if there is data from multiple UN Source for a region and period (i.e.
+#' different cities), the average of those sources is considered. This neglects
+#' the differences in population size of the cities. Selected data points are
+#' removed additionally.
 #'
-#' @param subtype data type
+#' @param subtype <dataFile>.<variable>
 #' @param x MAgPIE object with data from Daioglou et al.
 #' @return clean MAgPIE object with unique data points
 #'
@@ -20,7 +21,7 @@
 #' @importFrom magclass as.magpie
 #' @export
 
-convertDaioglou <- function(x, subtype = "specific floor space") {
+convertDaioglou <- function(x, subtype = "households.specific floor space") {
 
   data <- x %>%
     as.quitte() %>%
@@ -29,7 +30,7 @@ convertDaioglou <- function(x, subtype = "specific floor space") {
            region = gsub("Korea, south", "Korea", .data[["region"]]),
            region = toolCountry2isocode(.data[["region"]]))
 
-  if (subtype == "specific floor space") {
+  if (subtype == "households.specific floor space") {
 
     # remove data from UN if there are other sources for this region
     sourceUN <- unique(grep("UN habitat", data[["source"]], value = TRUE))
@@ -81,15 +82,22 @@ convertDaioglou <- function(x, subtype = "specific floor space") {
     data <- data %>%
       group_by(across(all_of(
         c("region", "period", "demographic", "quintile")))) %>%
-      summarise(value = mean(.data[["value"]]), .groups = "drop") %>%
-      as.magpie() %>%
-      toolCountryFill(verbosity = 2)
+      summarise(value = mean(.data[["value"]]), .groups = "drop")
 
+  } else if (grepl("^share_", subtype)) {
+    # explicit zero shares and unit conversion
+    data <- data %>%
+      group_by(across(all_of(c("region", "period", "demographic", "quintile")))) %>%
+      complete(.data[["variable"]]) %>%
+      mutate(value = replace_na(.data[["value"]], 0) / 100)
   } else {
-
     stop("This subtype is not available.")
-
   }
+
+  # convert to MAgPIE object
+  data <- data  %>%
+    as.magpie() %>%
+    toolCountryFill(verbosity = 2)
 
   return(data)
 }
