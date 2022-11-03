@@ -12,7 +12,7 @@
 #' @param x MAgPIE object with data from Daioglou et al.
 #' @return clean MAgPIE object with unique data points
 #'
-#' @author Robin Krekeler, Antoine Levesque
+#' @author Robin Hasse, Antoine Levesque
 #'
 #' @importFrom quitte as.quitte
 #' @importFrom dplyr filter mutate group_by summarise across all_of select %>%

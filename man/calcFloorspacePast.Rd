@@ -21,5 +21,5 @@ filtering should be moved to getFloorspaceResidential where the regression is
 performed. Therefore, the high-income data points are kept at this stage.
 }
 \author{
-Robin Krekeler, Antoine Levesque
+Robin Hasse, Antoine Levesque
 }

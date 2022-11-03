@@ -10,7 +10,7 @@
 #' @param removeUnit boolean remove unit after conversion for clean variable
 #' names
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @importFrom magclass getItems getSets dimReduce as.magpie
 #' @importFrom quitte as.quitte

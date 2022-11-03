@@ -16,5 +16,5 @@ floor national floor space in million m2
 Convert historic floor space data from the European Environment Agency.
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }

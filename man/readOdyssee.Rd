@@ -3,20 +3,33 @@
 \name{readOdyssee}
 \alias{readOdyssee}
 \title{Read Odyssee data base}
+\source{
+https://odyssee.enerdata.net/database/
+}
 \usage{
-readOdyssee()
+readOdyssee(subtype = "households")
+}
+\arguments{
+\item{subtype}{database category}
 }
 \value{
-data.frame with historic enduse or carrier shares
+magpie object
 }
 \description{
-Read and tidy data on final energy consumption for different end uses in
-residential (households) and commercial (services) buildings in Europe.
-Calculates end use or carrier shares for European EDGE regions.
+Copied from website: The Odyssee database contains detailed energy
+consumption by end-use and their drivers as well as energy efficiency and
+CO2-related indicators. Latest available data is provided by national
+representatives, such as energy agencies or statistical organization, from
+all EU countries as well as Norway, Serbia, Switzerland and the United
+Kingdom.
 }
-\references{
-Enerdata. Odyssee-Mure database. https://www.odyssee-mure.eu/
+\note{
+To download new data, log into the website, select all items of all
+levels and download the data 'column-orientated csv'.
+
+Variables are labels with the item code but full names can be found in
+the source data
 }
 \author{
-Antoine Levesque, Pascal Führlich
+Pascal Führlich, Robin Hasse
 }

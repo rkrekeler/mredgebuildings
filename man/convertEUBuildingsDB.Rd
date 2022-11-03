@@ -18,5 +18,5 @@ clean MAgPIE object with
 Convert to common units.
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }

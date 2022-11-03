@@ -6,7 +6,7 @@
 #' @param x MAgPIE object with data from EU Buildings Database
 #' @return clean MAgPIE object with
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @importFrom quitte inline.data.frame
 #' @importFrom magclass getNames getNames<- getItems getItems<- getSets<-
@@ -31,7 +31,8 @@ convertEUBuildingsDB <- function(x, subtype) {
     "index;    1;     1",
     "No-of;    1;     1",
     "Mtoe;     EJ;    0.041868",
-    "MJ/kg;    MJ/kg; 1"
+    "MJ/kg;    MJ/kg; 1",
+    "W/m²°C;   W/m2K; 1"
   )
   uTail <- function(u) paste0("_", u, "$")
   uConv <- function(unit, col) {
@@ -52,6 +53,12 @@ convertEUBuildingsDB <- function(x, subtype) {
   # drop EU sum and rename regions
   data <- data["EU", , invert = TRUE]
   getItems(data, 1) <- toolCountry2isocode(getItems(data, 1))
+
+  # manually drop erroneous data points
+  if (category == "BuildingStockCharacteristics") {
+      data[, 2017, c("Total floor area of single family dwellings_m2",
+                     "Total floor area of multi family dwellings_m2")] <- NA
+  }
 
   # fill missing regions with NA
   data <- toolCountryFill(data, verbosity = 2)

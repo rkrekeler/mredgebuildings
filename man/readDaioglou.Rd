@@ -2,21 +2,26 @@
 % Please edit documentation in R/readDaioglou.R
 \name{readDaioglou}
 \alias{readDaioglou}
-\title{Household data from Daioglou et al. 2012}
+\title{Household and demand data from Daioglou et al. 2012}
 \usage{
-readDaioglou(subtype = "specific floor space")
+readDaioglou(subtype = "households.specific floor space")
 }
 \arguments{
-\item{subtype}{data type}
+\item{subtype}{<dataFile>.<variable>}
 }
 \description{
-Global data on population, household size, floor space per capita (m2/cap),
-population density (cap/km2), GINI and household expenditures (PPP2005/cap)
-from various sources. Quintile 0 stands for the entire population.
+Compilation of survey data. Quintile 0 stands for the entire population.
+\itemize{
+\item households: Global data on population, household size, floor space per
+capita (m2/cap), population density (cap/km2), GINI and household
+expenditures (PPP2005/cap). Sources are written into a dimension to allow
+later cleaning based on sources
+\item shares: Final energy shares of end uses in buildings. Sources are dropped.
+}
 }
 \references{
 https://doi.org/10.1016/j.energy.2011.10.044
 }
 \author{
-Robin Krekeler, Antoine Levesque
+Robin Hasse, Antoine Levesque
 }

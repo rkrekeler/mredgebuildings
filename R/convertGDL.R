@@ -7,7 +7,7 @@
 #' @param x MAgPIE object with data from EU Buildings Database
 #' @return clean MAgPIE object with data from EU Buildings Database
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @importFrom magclass getItems getItems<- add_dimension getSets<-
 #' @importFrom madrat toolCountryFill

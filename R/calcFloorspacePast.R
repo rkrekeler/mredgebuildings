@@ -11,7 +11,7 @@
 #'
 #' @returns MAgPIE object with historic floor space
 #'
-#' @author Robin Krekeler, Antoine Levesque
+#' @author Robin Hasse, Antoine Levesque
 #'
 #' @importFrom madrat readSource calcOutput toolCountryFill
 #' @importFrom quitte as.quitte calc_addVariable

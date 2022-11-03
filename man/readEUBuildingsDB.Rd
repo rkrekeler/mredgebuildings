@@ -4,7 +4,7 @@
 \alias{readEUBuildingsDB}
 \title{Read EU Buildings Database}
 \usage{
-readEUBuildingsDB(subtype)
+readEUBuildingsDB(subtype = "")
 }
 \arguments{
 \item{subtype}{character <category>.<variable>}
@@ -27,5 +27,5 @@ variables for further filtering.
 \code{\link{readSource}}
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }

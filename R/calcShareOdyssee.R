@@ -11,12 +11,12 @@
 #'
 #' @returns MAgPIE object with historic shares
 #'
-#' @author Robin Krekeler, Antoine Levesque
+#' @author Robin Hasse, Antoine Levesque
 #'
 #' @importFrom magclass mbind as.magpie
 #' @importFrom madrat readSource toolCountryFill
-#' @importFrom quitte as.quitte revalue.levels group_by
-#' @importFrom dplyr filter %>% mutate group_by across all_of left_join group_by
+#' @importFrom quitte as.quitte revalue.levels
+#' @importFrom dplyr filter %>% mutate group_by across all_of left_join
 #' summarise
 #' @importFrom rlang .data
 #' @importFrom tidyr separate replace_na complete

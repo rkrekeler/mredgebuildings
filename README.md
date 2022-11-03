@@ -32,7 +32,7 @@ update.packages()
 
 ## Questions / Problems
 
-In case of questions / problems please contact Robin Krekeler <robin.krekeler@pik-potsdam.de>.
+In case of questions / problems please contact Robin Hasse <robin.hasse@pik-potsdam.de>.
 
 ## Citation
 

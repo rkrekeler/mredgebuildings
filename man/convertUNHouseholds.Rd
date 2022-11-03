@@ -18,5 +18,5 @@ clean MAgPIE object with
 Clean up UN data on household size and composition
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }

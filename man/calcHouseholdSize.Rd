@@ -18,5 +18,5 @@ more persons. This share is weighted with 5 persons which can cause a
 downward bias.
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }

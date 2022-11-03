@@ -21,5 +21,5 @@ Computes data for the Primary Final Useful (PFU) resolution
 \code{\link{calcOutput}}
 }
 \author{
-Antoine Levesque, Robin Krekeler
+Antoine Levesque, Robin Hasse
 }

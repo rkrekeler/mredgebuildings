@@ -4,7 +4,7 @@
 #'
 #' @return IEA data as MAgPIE object aggregated to country level
 #'
-#' @author Antoine Levesque, Robin Krekeler
+#' @author Antoine Levesque, Robin Hasse
 #'
 #' @seealso \code{\link{calcOutput}}
 #' @examples

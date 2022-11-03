@@ -13,7 +13,7 @@
 #' @param subtype <database>.<variable>
 #' @return magpie object
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @seealso \code{\link{readSource}}
 #' @examples

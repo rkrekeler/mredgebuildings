@@ -30,5 +30,5 @@ collected between 1960 to 2018.
 \code{\link{readSource}}
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }

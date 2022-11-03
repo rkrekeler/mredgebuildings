@@ -16,7 +16,7 @@
 #' @param subtype database category
 #' @returns magpie object
 #'
-#' @author Pascal Führlich, Robin Krekeler
+#' @author Pascal Führlich, Robin Hasse
 #'
 #' @importFrom utils read.csv
 #' @importFrom dplyr %>% select mutate
@@ -30,8 +30,8 @@ readOdyssee <- function(subtype = "households") {
 
   # check subtype
   file <- switch(subtype,
-                 households = "export_enerdata_7793_105710_households.csv",
-                 services   = "export_enerdata_7793_105638_services.csv",
+                 households = "export_enerdata_9259_031531.csv",
+                 services   = "export_enerdata_9259_031431.csv",
                  stop("'", subtype, "' is not a valid subtype."))
 
   # read data
@@ -42,6 +42,7 @@ readOdyssee <- function(subtype = "households") {
            value = "Value",
            unit = "Unit") %>%
     mutate(value = as.numeric(.data[["value"]])) %>%
+    filter(!is.na(.data[["value"]])) %>%
     unite("variable", "variable", "unit", na.rm = TRUE) %>%
     as.quitte() %>%
     as.magpie()

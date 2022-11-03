@@ -8,7 +8,7 @@
 #'
 #' @return MAgPIE object with household size
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @importFrom madrat readSource
 #' @export

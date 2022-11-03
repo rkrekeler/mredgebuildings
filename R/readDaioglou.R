@@ -7,7 +7,7 @@
 #' later cleaning based on sources
 #' - shares: Final energy shares of end uses in buildings. Sources are dropped.
 #'
-#' @author Robin Krekeler, Antoine Levesque
+#' @author Robin Hasse, Antoine Levesque
 #'
 #' @references https://doi.org/10.1016/j.energy.2011.10.044
 #'

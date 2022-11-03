@@ -4,7 +4,7 @@
 #'
 #' @return magpie object with floor space
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @seealso \code{\link{readSource}}
 #' @examples

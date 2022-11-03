@@ -3,7 +3,7 @@
 #' Consistent building stock of EU28 residential and commercial sector. The data
 #' presents a snapshot, I guess in 2016 but this is not clear to e yet.
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @importFrom utils read.csv
 #' @importFrom dplyr %>% mutate

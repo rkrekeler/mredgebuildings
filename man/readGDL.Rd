@@ -38,5 +38,5 @@ https://globaldatalab.org/asset/286/Smits\%20GDL\%20Working\%
 \code{\link{readSource}}
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }

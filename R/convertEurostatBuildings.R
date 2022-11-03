@@ -6,7 +6,7 @@
 #' @param subtype Eurostat code of data set
 #' @returns MAgPie object with converted data
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @importFrom magclass getItems getItems<-
 #' @importFrom madrat toolCountry2isocode
@@ -23,5 +23,13 @@ convertEurostatBuildings <- function(x, subtype) {
   getItems(data, 1) <- gsub("^EL$", "Greece", getItems(data, 1))
   getItems(data, 1) <- toolCountry2isocode(getItems(data, 1))
 
+  # fill missing regions with NA
+  data <- toolCountryFill(data, verbosity = 2)
 
+  # manually drop erroneous data points
+  if (subtype == "nrg_d_hhq") {
+    mselect(data, region = "ESP", period = "y2017", siec = "RA600") <- NA
+  }
+
+  return(data)
 }

@@ -12,11 +12,12 @@ convertGDL(x, subtype)
 \item{subtype}{<database>.<variable>}
 }
 \value{
-clean MAgPIE object with
+clean MAgPIE object with data from EU Buildings Database
 }
 \description{
-Drop subnational data but keep other subgroups (i.e. rural/urban, income quartiles)
+Drop subnational data but keep other subgroups (i.e. rural/urban, income
+quartiles)
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }
