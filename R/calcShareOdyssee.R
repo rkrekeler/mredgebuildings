@@ -18,7 +18,7 @@
 #' @importFrom quitte as.quitte revalue.levels
 #' @importFrom dplyr filter %>% mutate group_by across all_of left_join
 #' summarise
-#' @importFrom rlang .data
+#' @importFrom rlang .data syms
 #' @importFrom tidyr separate replace_na complete
 #' @importFrom utils tail
 #' @export

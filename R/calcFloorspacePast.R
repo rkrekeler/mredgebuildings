@@ -77,6 +77,7 @@ calcFloorspacePast <- function() {
     calc_addVariable(gdppop = "`gdp in constant 2005 Int$PPP` / `population`",
                      units = "USD2005/cap", only.new = TRUE) %>%
     filter(.data[["variable"]] == "gdppop")
+  gdppop <- NULL # remove this line when working on
 
   # share of urban population
   urbanshare <- calcOutput("UrbanPast", aggregate = FALSE) %>%

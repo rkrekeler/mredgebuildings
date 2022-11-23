@@ -138,6 +138,8 @@ calcSharesBuildingDemand <- function(subtype = c("enduse", "carrier")) {
     rename(fillValue = "value") %>%
     left_join(daioglou, by = c("region", "carrier", "enduse"))
 
+  share <- share # remove this line when continuing
+
 
 
 

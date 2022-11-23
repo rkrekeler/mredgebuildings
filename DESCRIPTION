@@ -20,8 +20,10 @@ Imports:
     dplyr,
     pdftools,
     quitte,
+    readxl,
     rlang,
-    tidyr
+    tidyr,
+    zoo
 Suggests:
     covr,
     lucode2,

@@ -25,7 +25,11 @@ readDaioglou <- function(subtype = "households.specific floor space") {
 
   # split subtype
   dataFile <- gsub("\\..*$", "", subtype)
-  variable <- if (dataFile == subtype) {NULL} else {gsub("^.*\\.", "", subtype)}
+  variable <- if (dataFile == subtype) {
+    NULL
+  } else {
+    gsub("^.*\\.", "", subtype)
+  }
 
   # remove separator and make string numeric
   asNum <- function(string) {
