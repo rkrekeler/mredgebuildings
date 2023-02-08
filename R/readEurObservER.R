@@ -9,7 +9,7 @@
 #' function throws an error if values don't sum up. You then have to correct the
 #' csv file manually.
 #'
-#' @param subtype >report series>.<variable>
+#' @param subtype <report series>.<variable>
 #' @returns magpie object
 #'
 #' @author Robin Hasse
@@ -24,18 +24,14 @@
 
 readEurObservER <- function(subtype) {
 
-  # FUNCTIONS ------------------------------------------------------------------
-
-
   # PREPARE --------------------------------------------------------------------
 
   # split subtype
   report   <- gsub("\\..*$", "", subtype)
-  variable <- gsub("^.*\\.", "", subtype)
 
   # list report files
   if (!report %in% dir()) {
-    stop("'", subtype, "' is an invalid subtype. Available reports: ",
+    stop("The subtype '", subtype, "' is invalid. Available reports: ",
          paste(dir(), collapse = ", "))
   }
   folder <- file.path(report)
@@ -102,7 +98,7 @@ readEurObservER <- function(subtype) {
                period = as.numeric(.data[["period"]]),
                reportPeriod = as.numeric(.data[["reportPeriod"]]),
                region = iconv(.data[["region"]], "latin1", "ASCII", sub = ""),
-               region = gsub("\\*|¹", "", .data[["region"]]),
+               region = gsub("\\*", "", .data[["region"]]),
                region = gsub("Czechia", "Czech Republic", .data[["region"]]),
                region = gsub("^Netherland$", "Netherlands", .data[["region"]]),
                region = gsub("United(-K| k)ingdom", "United Kingdom", .data[["region"]]),

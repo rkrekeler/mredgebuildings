@@ -1,14 +1,16 @@
-#' calculate the global historic building stock
+#' calculate the European historic building stock
 #'
-#' Join data from various sources to construct a consistent global building
+#' Join data from various sources to construct a consistent European building
 #' stock with a focus on floor space (million m2).
 #'
 #' @note if the distribution of building types is missing, it is filled with the
 #' Europe-wide distribution. It might be worthwhile to map filling countries
 #' instead.
-#' @returns MAgPIE object with historic building stock
 #'
 #' @author Robin Hasse
+#'
+#' @param subtype Character with subsector
+#' @returns MAgPIE object with historic building stock
 #'
 #' @importFrom madrat readSource
 #' @importFrom dplyr %>% filter mutate group_by across across summarise n
@@ -19,7 +21,7 @@
 #' @importFrom rlang .data
 #' @importFrom tidyr separate
 #' @importFrom zoo rollmean
-#'
+#' @importFrom stats pweibull
 #' @export
 
 calcBuildingStock <- function(subtype = c("residential", "commercial")) {
@@ -39,11 +41,10 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
 
   # FUNCTIONS ------------------------------------------------------------------
 
-  extrapolateMissingPeriods <- function(chunk, slopeOfLast = 5) {
-
+  extrapolateMissingPeriods <- function(chunk, key, slopeOfLast = 5) {
     # remove NAs
     outChunk <- chunk
-    chunk <- chunk[!is.na(chunk$value),]
+    chunk <- chunk[!is.na(chunk$value), ]
     upperPeriod <- max(chunk$period)
     lowerPeriod <- min(chunk$period)
 
@@ -86,7 +87,7 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
       filter(.data[["variable"]] == varTotal) %>%
       interpolate_missing_periods(union(periods, df$period)) %>%
       group_by(.data[["region"]]) %>%
-      group_modify(~ extrapolateMissingPeriods(.x)) %>%
+      group_modify(extrapolateMissingPeriods) %>%
       mutate(value = pmax(0, .data[["value"]])) %>%
       anti_join(df, by = c("region", "variable", "period")) %>%
       rbind(df)
@@ -106,7 +107,7 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
       interpolate_missing_periods(union(periods, outDf$period))
     dwellingTypeRatio <- dwellingTypeRatio %>%
       group_by(across(all_of(c("region", "variable")))) %>%
-      group_modify(~ extrapolateMissingPeriods(.x)) %>%
+      group_modify(extrapolateMissingPeriods) %>%
       ungroup() %>%
       full_join(interpolate_missing_periods(dwellingTypeRatio,
                                             union(periods, outDf$period),
@@ -290,14 +291,6 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
         nbrlprboi_1 = "dwellings_biomod.1",
         nbrlprele_1 = "dwellings_elec.1"
       )
-      varsHpEubdb <- c(
-        `Share of dwellings with heat pumps_1`                        = "share_heatpump.1",
-        `Share of dwellings with reversible heat pumps_1`             = "share_revHeatpump.1",
-        `Share of dwellings with an electric storage heater_1`        = "share_elecStorage.1",
-        `Number of dwellings with heat pumps_1`                       = "dwellings_heatpump.1",
-        `Number of dwellings with heating on electricity_1`           = "dwellings_elec.1",
-        `Number of dwellings with electric heaters (not heat-pump)_1` = "dwellings_resistElec.1"
-      )
       varsHeatingIdees <- c(
         `Residential|Stock of households|Space heating|Solids`                              = "dwellings_coal.11",
         `Residential|Stock of households|Space heating|Liquified petroleum gas (LPG)`       = "dwellings_gas.1",
@@ -339,16 +332,12 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
         revalue.levels(variable = varsHeatingOdyssee) %>%
         separate("variable", c("variable", "unit"), sep = "\\.") %>%
         separate("variable", c("variable", "carrier"), sep = "_")
-      hpEubdb <- eubdb %>%
-        filter(.data[["variable"]] %in% names(varsHpEubdb)) %>%
-        revalue.levels(variable = varsHpEubdb) %>%
-        separate("variable", c("variable", "unit"), sep = "\\.") %>%
-        separate("variable", c("variable", "carrier"), sep = "_")
       heatingIdees <- idees %>%
         filter(.data[["variable"]] %in% names(varsHeatingIdees)) %>%
         revalue.levels(variable = varsHeatingIdees) %>%
         separate("variable", c("variable", "unit"), sep = "\\.") %>%
         separate("variable", c("variable", "carrier"), sep = "_")
+      carrier <- NULL # remove this and find SE formulation
       heatingEurostat <- eurostat %>%
         filter(.data[["nrg_bal"]] == "FC_OTH_HH_E_SH") %>%
         select(-"model", -"scenario", -"nrg_bal", -"variable") %>%
@@ -476,7 +465,7 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
                  cumsum(c(0, head(.data[["value.y"]], -1))),
                variable = "after 2010") %>%
         anti_join(dwellingVintages,
-                  by = c("region", "period", "variable" ,"buildingType")) %>%
+                  by = c("region", "period", "variable", "buildingType")) %>%
         select(-"value.x", -"value.y") %>%
         rbind(dwellingVintages)
 
@@ -676,15 +665,19 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
           value = ifelse(
             .data[["lastPeriod"]] >= 2015,  # no filling with IDEES
             .data[["value.y"]],
-            ifelse(.data[["lastPeriod"]] > 2010,  # extrapolate last period a.r.t. rel. changes in IDEES
-                   .data[["value.y"]] * (.data[["value.x"]] / .data[["value.y"]])[.data[["period"]] == .data[["lastPeriod"]]],
-                   ifelse(.data[["lastPeriod"]] >= 2000,  # smooth transition to IDEES
-                          supPos(.data[["value.x"]], .data[["value.y"]],
-                                 (.data[["period"]] - pmax(.data[["firstPeriod"]] - 1, .data[["lastPeriod"]] + 1 - smoothPeriods)) /
-                                   pmin(smoothPeriods, .data[["lastPeriod"]] - .data[["firstPeriod"]] + 2)),
-                          .data[["value.x"]]
-                          )
-                   )
+            ifelse(
+              .data[["lastPeriod"]] > 2010,  # extrapolate last period a.r.t. rel. changes in IDEES
+              .data[["value.y"]] *
+                (.data[["value.x"]] / .data[["value.y"]])[.data[["period"]] == .data[["lastPeriod"]]],
+              ifelse(
+                .data[["lastPeriod"]] >= 2000,  # smooth transition to IDEES
+                supPos(.data[["value.x"]], .data[["value.y"]],
+                       (.data[["period"]] - pmax(.data[["firstPeriod"]] - 1,
+                                                 .data[["lastPeriod"]] + 1 - smoothPeriods)) /
+                         pmin(smoothPeriods, .data[["lastPeriod"]] - .data[["firstPeriod"]] + 2)),
+                .data[["value.x"]]
+                )
+              )
             ),
           value = ifelse(is.na(.data[["value.x"]]), .data[["value.y"]], .data[["value"]])
         ) %>%
@@ -704,10 +697,12 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
           firstPeriod = suppressWarnings(min(.data[["period"]][!is.na(.data[["value.y"]])])),
           value = ifelse(
             .data[["period"]] > .data[["lastPeriod"]],
-            .data[["value.x"]] * (.data[["value.y"]] / .data[["value.x"]])[.data[["period"]] == .data[["lastPeriod"]]],
+            .data[["value.x"]] *
+              (.data[["value.y"]] / .data[["value.x"]])[.data[["period"]] == .data[["lastPeriod"]]],
             ifelse(
               .data[["period"]] < .data[["firstPeriod"]],
-              .data[["value.x"]] * (.data[["value.y"]] / .data[["value.x"]])[.data[["period"]] == .data[["firstPeriod"]]],
+              .data[["value.x"]] *
+                (.data[["value.y"]] / .data[["value.x"]])[.data[["period"]] == .data[["firstPeriod"]]],
               .data[["value.y"]]
             )
           )
@@ -747,7 +742,6 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
 
       # extrapolate heat pump barometer (exponential growth with avg rate)
       # and fill missing regions with total sum
-      # TODO: consider only avg growth of early periods for smother transition
       hpNumber <- hpBarometer %>%
         filter(.data[["variable"]] == "Total")  %>%
         group_by(.data[["region"]]) %>%
@@ -882,19 +876,6 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
         select(-"growth", -"firstPeriod", -"avgValue") %>%
         completeRollmean(3)
 
-      # EUBDB
-      hpDwellings <- hpEubdb %>%
-        filter(.data[["variable"]] == "share") %>%
-        left_join(stock %>%
-                    filter(.data[["variable"]] == "dwellings") %>%
-                    group_by(across(all_of(c("region", "period")))) %>%
-                    summarise(value = sum(.data[["value"]]), .groups = "drop"),
-                  by = c("region", "period")) %>%
-        mutate(variable = "dwellings_calc",
-               value = .data[["value.x"]] * .data[["value.y"]]) %>%
-        select(-"value.x", -"value.y") %>%
-        rbind(hpEubdb)
-
       # share of HPs in electric heating
       # if extrapolated IDEES numbers match stock well enough, we use this
       # otherwise, we fall back to the Eurostat energy balance estimate
@@ -944,7 +925,7 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
         filter(.data[["variable"]] == "floorPerDwelling_Total") %>%
         interpolate_missing_periods(unique(stock$period)) %>%
         group_by(.data[["region"]]) %>%
-        group_modify(~ extrapolateMissingPeriods(.x)) %>%
+        group_modify(extrapolateMissingPeriods) %>%
         ungroup() %>%
         anti_join(dwellingSize, by = c("region", "period", "variable")) %>%
         rbind(dwellingSize) %>%
@@ -959,7 +940,7 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
                          only.new = TRUE) %>%
         interpolate_missing_periods(unique(stock$period)) %>%
         group_by(.data[["region"]]) %>%
-        group_modify(~ extrapolateMissingPeriods(.x)) %>%
+        group_modify(extrapolateMissingPeriods) %>%
         ungroup()
       sizeRatio <- sizeRatio %>%
         group_by(across(all_of(c("period", "variable")))) %>%
@@ -977,8 +958,10 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
                     group_by(across(all_of(c("region", "period", "variable")))) %>%
                     summarise(value = sum(.data[["value"]]), .groups = "drop")) %>%
         select(-"model", -"scenario") %>%
-        calc_addVariable(floorPerDwelling_MFH = "(floorPerDwelling_Total * (dwellings_SFH + dwellings_MFH)) / (floorRatio * dwellings_SFH + dwellings_MFH)",
-                         floorPerDwelling_SFH = "floorPerDwelling_MFH * floorRatio",
+        calc_addVariable(
+          floorPerDwelling_MFH = paste("(floorPerDwelling_Total * (dwellings_SFH + dwellings_MFH)) /",
+                                       "(floorRatio * dwellings_SFH + dwellings_MFH)"),
+          floorPerDwelling_SFH = "floorPerDwelling_MFH * floorRatio",
                          units = "m2") %>%
         filter(grepl("^floorPerDwelling_(SFH|MFH)", .data[["variable"]])) %>%
         separate("variable", c("variable", "buildingType"), sep = "_")

@@ -5,8 +5,8 @@
 #' - nrg_inf_hptc: Heat pumps - technical characteristics by technologies
 #' - ilc_hcmh02: Average size of dwelling by household type and degree of urbanisation
 #' - nrg_d_hhq: Disaggregated final energy consumption in households
-#' 
-#' @note see [Relationships between products and flows of energy balances](https://ec.europa.eu/eurostat/web/energy/data/energy-balances)
+#'
+#' @note see https://ec.europa.eu/eurostat/web/energy/data/energy-balances
 #' for definitions of codes
 #'
 #' @param subtype Eurostat code of data set

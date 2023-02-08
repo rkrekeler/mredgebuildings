@@ -22,7 +22,7 @@
 convertEurObservER <- function(x, subtype) {
 
 
-  backcast <- function(ts, growth) {
+  backcast <- function(ts, key, growth) {
 
     # Check that there are only unique values in disregarded columns
     nUnique <- lapply(
@@ -46,7 +46,7 @@ convertEurObservER <- function(x, subtype) {
       tReps <- as.numeric(as.character(getElement(tsStep, "reportperiod")))
       if (length(tReps) == 0) tReps <- NA
 
-      if (i == 1 | max(tReps) %in% tRepsPrev) {
+      if (i == 1 || max(tReps) %in% tRepsPrev) {
         v <- tsStep %>%
           filter(.data[["reportperiod"]] == max(tReps)) %>%
           getElement("value")
@@ -76,7 +76,6 @@ convertEurObservER <- function(x, subtype) {
   }
 
 
-
   data <- as.quitte(x) %>%
     filter(!is.na(.data[["value"]]))
 
@@ -93,7 +92,7 @@ convertEurObservER <- function(x, subtype) {
   data <- data %>%
     filter(.data[["variable"]] != "Total") %>%
     group_by(across(all_of(c("region", "variable")))) %>%
-    group_modify(~ backcast(.x, growth), .keep = TRUE)
+    group_modify(backcast, growth = growth, .keep = TRUE)
 
   # recalculate total
   data <- data %>%

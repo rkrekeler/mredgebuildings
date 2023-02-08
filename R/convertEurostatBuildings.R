@@ -28,7 +28,7 @@ convertEurostatBuildings <- function(x, subtype) {
 
   # manually drop erroneous data points
   if (subtype == "nrg_d_hhq") {
-    mselect(data, region = "ESP", period = "y2017", siec = "RA600") <- NA
+    mselect(data, region = "ESP", period = "y2017", siec = "RA600") <- NA # nolint
   }
 
   return(data)

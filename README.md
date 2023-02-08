@@ -1,8 +1,8 @@
 # Prepare data to be used by the EDGE-Buildings model
 
-R package **mredgebuildings**, version **0.1.2**
+R package **mredgebuildings**, version **0.1.3**
 
-[![CRAN status](https://www.r-pkg.org/badges/version/mredgebuildings)](https://cran.r-project.org/package=mredgebuildings)  [![R build status](https://github.com/pik-piam/mredgebuildings/workflows/check/badge.svg)](https://github.com/pik-piam/mredgebuildings/actions) [![codecov](https://codecov.io/gh/pik-piam/mredgebuildings/branch/master/graph/badge.svg)](https://app.codecov.io/gh/pik-piam/mredgebuildings) [![r-universe](https://pik-piam.r-universe.dev/badges/mredgebuildings)](https://pik-piam.r-universe.dev/ui#builds)
+[![CRAN status](https://www.r-pkg.org/badges/version/mredgebuildings)](https://cran.r-project.org/package=mredgebuildings)  [![R build status](https://github.com/pik-piam/mredgebuildings/workflows/check/badge.svg)](https://github.com/pik-piam/mredgebuildings/actions) [![codecov](https://codecov.io/gh/pik-piam/mredgebuildings/branch/master/graph/badge.svg)](https://app.codecov.io/gh/pik-piam/mredgebuildings) [![r-universe](https://pik-piam.r-universe.dev/badges/mredgebuildings)](https://pik-piam.r-universe.dev/builds)
 
 ## Purpose and Functionality
 
@@ -38,15 +38,16 @@ In case of questions / problems please contact Robin Hasse <robin.hasse@pik-pots
 
 To cite package **mredgebuildings** in publications use:
 
-Krekeler R, Führlich P, Levesque A (2022). _mredgebuildings: Prepare data to be used by the EDGE-Buildings model_. R package version 0.1.2.
+Hasse R, Führlich P, Levesque A (2023). _mredgebuildings: Prepare data to be used by the EDGE-Buildings model_. R package version 0.1.3, <https://github.com/pik-piam/mredgebuildings>.
 
 A BibTeX entry for LaTeX users is
 
  ```latex
 @Manual{,
   title = {mredgebuildings: Prepare data to be used by the EDGE-Buildings model},
-  author = {Robin Krekeler and Pascal Führlich and Antoine Levesque},
-  year = {2022},
-  note = {R package version 0.1.2},
+  author = {Robin Hasse and Pascal Führlich and Antoine Levesque},
+  year = {2023},
+  note = {R package version 0.1.3},
+  url = {https://github.com/pik-piam/mredgebuildings},
 }
 ```

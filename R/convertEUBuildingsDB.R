@@ -23,32 +23,18 @@ convertEUBuildingsDB <- function(x, subtype) {
 
   # unit conversion
   unitConversion <- inline.data.frame(
-    "from;     to;    factor",
-    "Mm²;      m2;    1", # per dwelling
-    "m²;       m2;    1",
-    "thousand; 1;     1E3",
-    "%;        1;     1E-2",
-    "index;    1;     1",
-    "No-of;    1;     1",
-    "Mtoe;     EJ;    0.041868",
-    "MJ/kg;    MJ/kg; 1",
-    "W/m²°C;   W/m2K; 1"
+    "from;          to;     factor",
+    "Mm<b2>;        m2;     1", # per dwelling
+    "m<b2>;         m2;     1",
+    "thousand;      1;      1E3",
+    "%;             1;      1E-2",
+    "index;         1;      1",
+    "No-of;         1;      1",
+    "Mtoe;          EJ;     0.041868",
+    "MJ/kg;         MJ/kg;  1",
+    "W/m<b2><b0>C;  W/m2K;  1"
   )
-  uTail <- function(u) paste0("_", u, "$")
-  uConv <- function(unit, col) {
-    unlist(unitConversion[unitConversion$from == unit, col])
-  }
-  units <- unique(gsub("^.*_", "", getNames(data)))
-  if (!all(units %in% unitConversion$from)) {
-    stop("There is no conversion defined for the following units: ",
-         paste(setdiff(units, unitConversion$from)), collapse = ", ")
-  }
-  for (unit in units) {
-    varsUnit <- grep(uTail(unit), getNames(data), value = TRUE)
-    data[, , varsUnit] <- data[, , varsUnit] * uConv(unit, "factor")
-    getNames(data) <- gsub(uTail(unit), paste0("_", uConv(unit, "to")),
-                           getNames(data))
-  }
+  data <- toolUnitConversion(data, unitConversion)
 
   # drop EU sum and rename regions
   data <- data["EU", , invert = TRUE]
@@ -86,7 +72,6 @@ convertEUBuildingsDB <- function(x, subtype) {
     },
       stop("'", subtype, "' is an invalid subtype.")
   )
-
 
   return(data)
 }

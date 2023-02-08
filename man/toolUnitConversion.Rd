@@ -2,12 +2,12 @@
 % Please edit documentation in R/toolUnitConversion.R
 \name{toolUnitConversion}
 \alias{toolUnitConversion}
-\title{convert unit}
+\title{Convert unit}
 \usage{
 toolUnitConversion(x, unitConversion, dim = 3.1, removeUnit = FALSE)
 }
 \arguments{
-\item{x}{magpie object}
+\item{x}{MAgPIE object}
 
 \item{unitConversion}{data.frame with the columns from, to, factor}
 

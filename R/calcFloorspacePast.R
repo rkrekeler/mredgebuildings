@@ -71,13 +71,12 @@ calcFloorspacePast <- function() {
     mutate(unit = "million cap")
 
   # historic GDP per capita
-  gdppop <- calcOutput("GDPPast", aggregate = FALSE) %>%
+  gdppop <- calcOutput("GDPPast", aggregate = FALSE) %>% # nolint
     as.quitte() %>%
     rbind(pop) %>%
     calc_addVariable(gdppop = "`gdp in constant 2005 Int$PPP` / `population`",
                      units = "USD2005/cap", only.new = TRUE) %>%
     filter(.data[["variable"]] == "gdppop")
-  gdppop <- NULL # remove this line when working on
 
   # share of urban population
   urbanshare <- calcOutput("UrbanPast", aggregate = FALSE) %>%

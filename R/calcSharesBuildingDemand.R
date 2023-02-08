@@ -3,9 +3,10 @@
 #' Shares are calculated based on energy demands from the Odyssee data base for
 #' EU member states,
 #'
-#' @returns MAgPIE object with historic shares
-#'
 #' @author Robin Hasse, Antoine Levesque
+#'
+#' @param subtype Character, dimension names, level of shares.
+#' @returns MAgPIE object with historic shares
 #'
 #' @importFrom madrat readSource toolGetMapping
 #' @importFrom dplyr %>% filter mutate select group_by across all_of any_of

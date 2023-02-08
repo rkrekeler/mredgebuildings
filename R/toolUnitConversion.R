@@ -1,18 +1,18 @@
-#' convert unit
+#' Convert unit
 #'
 #' Takes MAgPIE object with a variable dimension that has the unit as suffix
 #' separated with '_' and converts the unit according to a unit conversion
 #' table.
 #'
-#' @param x magpie object
+#' @author Robin Hasse
+#'
+#' @param x MAgPIE object
 #' @param unitConversion data.frame with the columns from, to, factor
 #' @param dim variable dimension that contains the unit as suffix
 #' @param removeUnit boolean remove unit after conversion for clean variable
 #' names
 #'
-#' @author Robin Hasse
-#'
-#' @importFrom magclass getItems getSets dimReduce as.magpie
+#' @importFrom magclass getItems getItems<- getSets dimReduce as.magpie
 #' @importFrom quitte as.quitte
 #' @importFrom tidyr separate
 #' @export
@@ -25,6 +25,9 @@ toolUnitConversion <- function(x, unitConversion, dim = 3.1,
     stop("'unitConversion' has to be a data.frame with the columns ",
          "'from', 'to', and 'factor'.")
   }
+
+  # convert to ASCII
+  getItems(x, dim) <- iconv(getItems(x, dim), "latin1", "ASCII", "byte")
 
   # all units in data
   units <- unique(gsub("^.*_", "", grep("_", getItems(x, dim), value = TRUE)))

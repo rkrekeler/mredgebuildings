@@ -13,7 +13,7 @@ IEA data as MAgPIE object aggregated to country level
 Computes data for the Primary Final Useful (PFU) resolution
 }
 \examples{
-\dontrun{ a <- calcOutput("IEA_PFU")
+\dontrun{ a <- calcOutput("IEAPFU")
 }
 
 }
