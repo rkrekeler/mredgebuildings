@@ -13,7 +13,7 @@ Description: Prepare data to be used by the EDGE-Buildings model.
 License: MIT + file LICENSE
 URL: https://github.com/pik-piam/mredgebuildings
 Depends:
-    madrat(>= 2.8.1),
+    madrat (>= 2.8.1),
     magclass,
     mrcommons (>= 1.7.1)
 Imports:
