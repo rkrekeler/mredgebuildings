@@ -9,9 +9,10 @@
 #' average share across all regions and periods and then normalised to sum up to
 #' one again. Traditional biomass use is assumed to be zero.
 #'
-#' @returns MAgPIE object with historic shares
-#'
 #' @author Robin Hasse, Antoine Levesque
+#'
+#' @param subtype Character, dimension names, level of shares.
+#' @returns MAgPIE object with historic shares
 #'
 #' @importFrom magclass mbind as.magpie
 #' @importFrom madrat readSource toolCountryFill

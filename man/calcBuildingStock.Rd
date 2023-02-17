@@ -2,15 +2,18 @@
 % Please edit documentation in R/calcBuildingStock.R
 \name{calcBuildingStock}
 \alias{calcBuildingStock}
-\title{calculate the global historic building stock}
+\title{calculate the European historic building stock}
 \usage{
 calcBuildingStock(subtype = c("residential", "commercial"))
+}
+\arguments{
+\item{subtype}{Character with subsector}
 }
 \value{
 MAgPIE object with historic building stock
 }
 \description{
-Join data from various sources to construct a consistent global building
+Join data from various sources to construct a consistent European building
 stock with a focus on floor space (million m2).
 }
 \note{

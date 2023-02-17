@@ -6,6 +6,9 @@
 \usage{
 calcShareOdyssee(subtype = c("enduse", "enduse_carrier"))
 }
+\arguments{
+\item{subtype}{Character, dimension names, level of shares.}
+}
 \value{
 MAgPIE object with historic shares
 }

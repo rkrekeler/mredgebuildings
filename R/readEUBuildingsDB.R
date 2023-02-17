@@ -15,7 +15,6 @@
 #' \dontrun{ a <- readSource(type = "EUBuildingsDB")
 #' }
 #'
-#' @importFrom stats setNames
 #' @importFrom madrat toolSubtypeSelect
 #' @importFrom utils read.csv
 #' @importFrom dplyr %>% slice mutate filter matches
@@ -33,7 +32,7 @@ readEUBuildingsDB <- function(subtype = "") {
 
   # available source files
   files <- list.files()
-  files <- setNames(files, gsub(".csv", "", files))
+  files <- stats::setNames(files, gsub(".csv", "", files))
   file <- toolSubtypeSelect(category, files)
 
   # read csv file and stack regions

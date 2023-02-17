@@ -8,7 +8,7 @@
 #'
 #' @seealso \code{\link{calcOutput}}
 #' @examples
-#' \dontrun{ a <- calcOutput("IEA_PFU")
+#' \dontrun{ a <- calcOutput("IEAPFU")
 #' }
 #'
 #' @importFrom madrat toolGetMapping readSource

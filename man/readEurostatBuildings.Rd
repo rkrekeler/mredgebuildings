@@ -22,7 +22,7 @@ buildings
 }
 }
 \note{
-see \href{https://ec.europa.eu/eurostat/web/energy/data/energy-balances}{Relationships between products and flows of energy balances}
+see https://ec.europa.eu/eurostat/web/energy/data/energy-balances
 for definitions of codes
 }
 \author{

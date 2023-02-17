@@ -51,7 +51,8 @@ readEuropeanCommissionRenovation <- function() {
                                     pattern = "%", replacement = ""))
     # make numeric
     table <- data.frame(table)
-    table[, -1] <- sapply(table[, -1], function(x) as.numeric(sub("-", NA, x)))
+    table[, -1] <- apply(table[, -1], c(1, 2),
+                         function(x) as.numeric(sub("-", NA, x)))
 
     # convert percentages to absolute
     table[, -1] <- table[, -1] * ifelse(percent[, -1], 0.01, 1)
@@ -90,11 +91,11 @@ readEuropeanCommissionRenovation <- function() {
             "Non-energy related - Total")
   data <- rbind(
     readTables(pdf, 22, 23, 37:43, 1:24, cols[c(-1, -7)], "renovation rate",     "1/yr",           "residential"),
-    readTable( pdf, 24,     13:43,       cols[c(-1, -7)], "renovation rate",     "1/yr",           "commercial"),
-    readTable( pdf, 28,     11:39,       cols[c(-1, -7)], "relative PE savings", "1",              "residential"),
+    readTable(pdf,  24,     13:43,       cols[c(-1, -7)], "renovation rate",     "1/yr",           "commercial"),
+    readTable(pdf,  28,     11:39,       cols[c(-1, -7)], "relative PE savings", "1",              "residential"),
     readTables(pdf, 29, 30, 31:50, 1:13, cols[c(-1, -7)], "specific PE savings", "kWh/yr.m2",      "residential"),
     readTables(pdf, 30, 31, 31:44, 1:17, cols[c(-1, -7)], "PE savings",          "TOE/yr",         "residential"),
-    readTable( pdf, 32,     11:39,       cols[c(-1, -7)], "relative PE savings", "1",              "commercial"),
+    readTable(pdf,  32,     11:39,       cols[c(-1, -7)], "relative PE savings", "1",              "commercial"),
     readTables(pdf, 33, 34, 33:48, 1:15, cols[c(-1, -7)], "specific PE savings", "kWh/yr.m2",      "commercial"),
     readTables(pdf, 34, 35, 36:47, 1:19, cols[c(-1, -7)], "PE savings",          "TOE/yr",         "commercial"),
     readTables(pdf, 36, 37, 35:40, 1:28, cols,            "investment",          "million EUR/yr", "residential"),

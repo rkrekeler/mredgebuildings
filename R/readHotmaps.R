@@ -14,7 +14,7 @@
 #' @export
 
 readHotmaps <- function() {
-  data <- read.csv("C:/Users/krekeler/Documents/rd3mod/inputdata/sources/Hotmaps/building_stock.csv", sep = "|") %>%
+  data <- read.csv("building_stock.csv", sep = "|") %>%
     group_by(across(-any_of(c("estimated", "value", "unit", "source")))) %>%
     summarise(value = mean(.data[["value"]]), .groups = "drop") %>%
     unite("variable", "topic", "feature", "type", "detail") %>%
@@ -28,4 +28,6 @@ readHotmaps <- function() {
            variable = gsub("_$", "", .data[["variable"]])) %>%
     as.quitte() %>%
     as.magpie()
+
+  return(data)
 }
