@@ -9,10 +9,9 @@
 #' @author Hagen Tockhorn
 #'
 #' @importFrom quadprog solve.QP
-#' @importFrom quitte factor.data.frame
 #' @export
 
-toolDisaggregate <- function(data, sharesEU, sharesEC, showCheck = TRUE) {
+toolDisaggregate <- function(data, sharesEU, sharesEC) {
   # ==== Explanation
   # Determine the matrix coefficient based on sharesEU and sharesEC,
   # looking for the solution closest to the data estimates.
@@ -97,7 +96,7 @@ toolDisaggregate <- function(data, sharesEU, sharesEC, showCheck = TRUE) {
 
 
     tmp <- table[table[["region"]] == reg & table[["period"]] == per, ]
-    tmp <- factor.data.frame(tmp)
+    tmp <- quitte::factor.data.frame(tmp)
 
     # Select only combined shares of interest
     tmpFilter <- tmp %>%

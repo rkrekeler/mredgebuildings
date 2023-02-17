@@ -5,7 +5,7 @@
 \title{Disaggregates Enduse and Carrier Shares into combined enduse-carrier shares
 via a quadratic optimization for an under-determined linear set of equations.}
 \usage{
-toolDisaggregate(data, sharesEU, sharesEC, showCheck = TRUE)
+toolDisaggregate(data, sharesEU, sharesEC)
 }
 \arguments{
 \item{data}{data.frame containing enduse-carrier shares for first estimation
