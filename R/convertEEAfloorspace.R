@@ -5,7 +5,7 @@
 #' @param x MAgPIE object with floor space data
 #' @return floor national floor space in million m2
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @importFrom magclass getItems getItems<- dimSums
 #' @importFrom utils head

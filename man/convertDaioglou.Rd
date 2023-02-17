@@ -4,24 +4,25 @@
 \alias{convertDaioglou}
 \title{convertDaioglou}
 \usage{
-convertDaioglou(x, subtype = "specific floor space")
+convertDaioglou(x, subtype = "households.specific floor space")
 }
 \arguments{
 \item{x}{MAgPIE object with data from Daioglou et al.}
 
-\item{subtype}{data type}
+\item{subtype}{<dataFile>.<variable>}
 }
 \value{
 clean MAgPIE object with unique data points
 }
 \description{
 Tidy data from Daioglou et al. 2012. Currently, only the specific floor
-space (m2/cap) is available. UN sources are dropped, if there is data from
-other sources for the same region. For the remaining data, if there is data
-from multiple UN Source for a region and period (i.e. different cities),
-the average of those sources is considered. This neglects the differences in
-population size of the cities. Selected data points are removed additionally.
+space (m2/cap) is available from household data file. UN sources are dropped,
+if there is data from other sources for the same region. For the remaining
+data, if there is data from multiple UN Source for a region and period (i.e.
+different cities), the average of those sources is considered. This neglects
+the differences in population size of the cities. Selected data points are
+removed additionally.
 }
 \author{
-Robin Krekeler, Antoine Levesque
+Robin Hasse, Antoine Levesque
 }

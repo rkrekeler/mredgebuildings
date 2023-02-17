@@ -7,3 +7,6 @@
 ^.*\.zenodo.json$
 ^codecov\.yml$
 ^workflow$
+^.lintr$
+^tests/.lintr$
+^Makefile$

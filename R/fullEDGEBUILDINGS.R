@@ -5,7 +5,7 @@
 #'
 #' @param rev data revision which should be used as input (positive numeric).
 #'
-#' @author Antoine Levesque, Robin Krekeler
+#' @author Antoine Levesque, Robin Hasse
 #'
 #' @seealso
 #' \code{\link{readSource}},\code{\link{getCalculations}},\code{\link{calcOutput}}

@@ -5,7 +5,7 @@
 #'
 #' @return MAgPIE object with floor space
 #'
-#' @author Robin Krekeler
+#' @author Robin Hasse
 #'
 #' @source https://iea.blob.core.windows.net/assets/416e9555-67f9-49ed-95ed-8afccd71b433/
 #' Tracking_clean_energy_progress_2014.pdf

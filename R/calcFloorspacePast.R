@@ -11,7 +11,7 @@
 #'
 #' @returns MAgPIE object with historic floor space
 #'
-#' @author Robin Krekeler, Antoine Levesque
+#' @author Robin Hasse, Antoine Levesque
 #'
 #' @importFrom madrat readSource calcOutput toolCountryFill
 #' @importFrom quitte as.quitte calc_addVariable
@@ -71,7 +71,7 @@ calcFloorspacePast <- function() {
     mutate(unit = "million cap")
 
   # historic GDP per capita
-  gdppop <- calcOutput("GDPPast", aggregate = FALSE) %>%
+  gdppop <- calcOutput("GDPPast", aggregate = FALSE) %>% # nolint
     as.quitte() %>%
     rbind(pop) %>%
     calc_addVariable(gdppop = "`gdp in constant 2005 Int$PPP` / `population`",

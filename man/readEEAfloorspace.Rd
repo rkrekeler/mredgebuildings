@@ -21,5 +21,5 @@ Floor space for many European countries between 1990 and 2009 in thousand m2.
 \code{\link{readSource}}
 }
 \author{
-Robin Krekeler
+Robin Hasse
 }
