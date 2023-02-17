@@ -41,8 +41,9 @@ convertOdyssee <- function(x, subtype = "households") {
   data <- toolCountryFill(data, verbosity = 2)
 
   # manually drop erroneous data points
-  data["HUN", , c("surlpn_m2", "surmpn_m2", "suripn_m2")] <- NA
-  data["PRT", , c("nbrlprpet_1", "nbrlprgaz_1", "nbrlprcms_1", "nbrlprvap_1", "nbrlprboi_1", "nbrlprele_1")] <- NA
-
+  if (subtype == "households") {
+    data["HUN", , c("surlpn_m2", "surmpn_m2", "suripn_m2")] <- NA
+    data["PRT", , c("nbrlprpet_1", "nbrlprgaz_1", "nbrlprcms_1", "nbrlprvap_1", "nbrlprboi_1", "nbrlprele_1")] <- NA
+  }
   return(data)
 }
