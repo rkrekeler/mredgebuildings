@@ -7,7 +7,7 @@
 readEUBuildingsDB(subtype = "")
 }
 \arguments{
-\item{subtype}{character <category>.<variable>}
+\item{subtype}{character \if{html}{\out{<category>}}.\if{html}{\out{<variable>}}}
 }
 \value{
 magpie object
