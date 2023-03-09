@@ -10,7 +10,7 @@ https://www.eurobserv-er.org/
 readEurObservER(subtype)
 }
 \arguments{
-\item{subtype}{<report series>.<variable>}
+\item{subtype}{\if{html}{\out{<report series>}}.\if{html}{\out{<variable>}}}
 }
 \value{
 magpie object
