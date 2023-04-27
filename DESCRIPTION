@@ -1,13 +1,14 @@
 Type: Package
 Package: mredgebuildings
 Title: Prepare data to be used by the EDGE-Buildings model
-Version: 0.1.5
-Date: 2023-03-09
+Version: 0.2.0
+Date: 2023-04-27
 Authors@R: c(
     person("Robin", "Hasse", , "robin.hasse@pik-potsdam.de", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-1818-3186")),
     person("Pascal", "Führlich", , "pascal.fuehrlich@pik-potsdam.de", role = "aut"),
-    person("Antoine", "Levesque", role = "aut")
+    person("Antoine", "Levesque", role = "aut"),
+    person("Hagen", "Tockhorn", role="aut")
   )
 Description: Prepare data to be used by the EDGE-Buildings model.
 License: MIT + file LICENSE
@@ -20,6 +21,8 @@ Depends:
 Imports:
     dplyr,
     pdftools,
+    plyr,
+    quadprog,
     quitte,
     readxl,
     rlang,

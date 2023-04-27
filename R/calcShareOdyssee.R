@@ -28,9 +28,11 @@ calcShareOdyssee <- function(subtype = c("enduse", "enduse_carrier")) {
   subtype <- match.arg(subtype)
   shareOf <- strsplit(subtype, "_")[[1]]
 
+
   # read buildings data
   odyssee <- mbind(readSource("Odyssee", "households"),
                    readSource("Odyssee", "services"))
+
 
   # variable mappings
   revalCarrier <- c(
@@ -68,24 +70,51 @@ calcShareOdyssee <- function(subtype = c("enduse", "enduse_carrier")) {
                    enduse  = revalEnduse) %>%
     interpolate_missing_periods(expand.values = TRUE)
 
+
+  # Extrapolate 'biotrad' share from 'biomod' values
+  edgeBio <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", aggregate = FALSE)
+  feBio <- calcOutput("IO", subtype = "output_biomass", aggregate = FALSE)
+
+  shareBiotrad <- edgeBio[, , "biotrad"] / (feBio[, , "sesobio.fesob.tdbiosob"] + feBio[, , "sesobio.fesoi.tdbiosoi"])
+  shareBiotrad[is.na(shareBiotrad)] <- 0
+
+  shareBiotrad <- shareBiotrad %>%
+    as.quitte() %>%
+    mutate(share = .data[["value"]]) %>%
+    select(-"value", -"model", -"scenario", -"variable", -"unit", -"d3", -"d31", -"data", -"data1", -"data2", -"data11")
+
+
+  odyssee <- odyssee %>%
+    filter(.data[["carrier"]] == "biomod") %>%
+    left_join(shareBiotrad, by = c("region", "period")) %>%
+    mutate(region = droplevels(.data[["region"]])) %>%
+    mutate(biotrad = .data[["value"]] * .data[["share"]],
+           biomod = .data[["value"]] * (1 - .data[["share"]])) %>%
+    select(-"value", -"share") %>%
+    gather(key = "carrier", value = "value", "biotrad", "biomod") %>%
+    rbind(odyssee %>% filter(.data[["carrier"]] != "biomod"))
+
+
   # calculate shares
   calcShares <- function(data, colShare) {
     data %>%
       group_by(across(-all_of(c(colShare, "value")))) %>%
-      mutate(value = .data[["value"]] / sum(.data[["value"]])) %>%
+      mutate(value = proportions(.data[["value"]])) %>%
       ungroup()
-  }
+}
+
   shareGlobal <- odyssee %>%
     group_by(across(all_of(shareOf))) %>%
     summarise(value = sum(.data[["value"]]), .groups = "drop") %>%
     ungroup() %>%
-    calcShares(tail(shareOf, 1)) %>%
+    mutate(value = .data[["value"]] / sum(.data[["value"]])) %>%
     mutate(value = replace_na(.data[["value"]], 1))
+
   share <- odyssee %>%
     group_by(across(all_of(c("region", "period", shareOf)))) %>%
     summarise(value = sum(.data[["value"]]), .groups = "drop") %>%
     ungroup() %>%
-    calcShares(tail(shareOf, 1)) %>%
+    calcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1)) %>%
     mutate(value = replace_na(.data[["value"]], 1)) %>%
     complete(!!!syms(c("region", "period", shareOf))) %>%
     left_join(shareGlobal, by = shareOf) %>%
@@ -94,16 +123,8 @@ calcShareOdyssee <- function(subtype = c("enduse", "enduse_carrier")) {
                           .data[["value.x"]]),
            value = replace_na(.data[["value"]], 0)) %>%
     select(-"value.x", -"value.y") %>%
-    calcShares(tail(shareOf, 1))
+    calcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1))
 
-  # add zero traditional biomass
-  if (subtype == "enduse_carrier") {
-    share <- share %>%
-      filter(.data[["carrier"]] == "biomod") %>%
-      mutate(value = 0,
-             carrier = "biotrad") %>%
-      rbind(share)
-  }
 
   # convert to magpie object
   share <- share %>%
