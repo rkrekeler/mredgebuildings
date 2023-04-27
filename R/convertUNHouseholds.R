@@ -9,7 +9,6 @@
 #' @author Robin Hasse
 #'
 #' @importFrom magclass getItems getItems<- add_dimension getSets<-
-#' @madrat toolCountryFill
 #' @importFrom dplyr %>% filter mutate
 #' @importFrom rlang .data
 #' @importFrom quitte as.quitte replace_column
