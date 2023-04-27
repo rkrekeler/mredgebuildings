@@ -6,6 +6,9 @@
 \usage{
 calcShareETP(subtype = c("enduse", "carrier"))
 }
+\arguments{
+\item{subtype}{specifies share}
+}
 \value{
 MAgPIE object with historic shares
 }
