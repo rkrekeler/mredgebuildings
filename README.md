@@ -38,11 +38,7 @@ In case of questions / problems please contact Robin Hasse <robin.hasse@pik-pots
 
 To cite package **mredgebuildings** in publications use:
 
-<<<<<<< HEAD
 Hasse R, Führlich P, Levesque A, Tockhorn H (2023). _mredgebuildings: Prepare data to be used by the EDGE-Buildings model_. R package version 0.2.0, <https://github.com/pik-piam/mredgebuildings>.
-=======
-Hasse R, Führlich P, Levesque A (2023). _mredgebuildings: Prepare data to be used by the EDGE-Buildings model_. R package version 0.1.5, <URL: https://github.com/pik-piam/mredgebuildings>.
->>>>>>> 649622c80e58df67cb2ccc8d7943aec27c8a76c3
 
 A BibTeX entry for LaTeX users is
 
@@ -51,11 +47,7 @@ A BibTeX entry for LaTeX users is
   title = {mredgebuildings: Prepare data to be used by the EDGE-Buildings model},
   author = {Robin Hasse and Pascal Führlich and Antoine Levesque and Hagen Tockhorn},
   year = {2023},
-<<<<<<< HEAD
   note = {R package version 0.2.0},
-=======
-  note = {R package version 0.1.5},
->>>>>>> 649622c80e58df67cb2ccc8d7943aec27c8a76c3
   url = {https://github.com/pik-piam/mredgebuildings},
 }
 ```
