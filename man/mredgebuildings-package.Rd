@@ -22,6 +22,7 @@ Authors:
 \itemize{
   \item Pascal Führlich \email{pascal.fuehrlich@pik-potsdam.de}
   \item Antoine Levesque
+  \item Hagen Tockhorn
 }
 
 }

@@ -65,7 +65,6 @@ calcShareETP <- function(subtype = c("enduse", "carrier")) {
 
   names(etpFilter)[names(etpFilter) == "data1"] <- shareOf
 
-
   # Extrapolate 'biotrad' share from 'biomod' values for carrier separation
   if (subtype == "carrier") {
     edgeBio <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", aggregate = FALSE)
@@ -131,10 +130,12 @@ calcShareETP <- function(subtype = c("enduse", "carrier")) {
       rbind(share)
   }
 
+  # browser()
   # convert to magpie object
   share <- share %>%
-    as.magpie() %>%
-    toolCountryFill(verbosity = 2)
+    droplevels() %>%
+    as.magpie(spatial = 1) %>%
+    toolCountryFill(verbosity = 0)
 
   # weights: regional share of final energy
   regShare <- etpFilter %>%
@@ -144,9 +145,9 @@ calcShareETP <- function(subtype = c("enduse", "carrier")) {
     summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
     group_by(across(all_of(c("period", head(shareOf, -1))))) %>%
     mutate(value = .data[["value"]] / sum(.data[["value"]])) %>%
-    as.magpie() %>%
+    as.magpie(spatial = 1) %>%
     collapseDim() %>%
-    toolCountryFill(1, verbosity = 2)
+    toolCountryFill(1, verbosity = 0)
 
 
 

@@ -16,7 +16,7 @@
 #' @export
 
 
-getFEbyEUEC <- function() {
+calcFEbyEUEC <- function() {
   #---Read-in FE Data
   ieaIO <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", aggregate = FALSE) %>%
     as.quitte(na.rm = TRUE)
@@ -51,10 +51,17 @@ getFEbyEUEC <- function() {
     select(-"share")
 
   #---Pack Data
-  data <- ieaIO %>%
+  ieaIO <- ieaIO %>%
     as.quitte() %>%
     as.magpie() %>%
     toolCountryFill(1, verbosity = 2)
+
+  data <- list(
+    x = ieaIO,
+    weight = NULL,
+    unit = "EJ",
+    description = "Historic Final Energy Data from IEA"
+  )
 
   return(data)
 

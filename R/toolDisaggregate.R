@@ -230,8 +230,8 @@ toolDisaggregate <- function(data, sharesEU, sharesEC, showCheck = TRUE) {
   table <- do.call(rbind,
                   Map(computeEUEC,
                          unique(table[c("region", "period")])[[1]],
-                         unique(table[c("region", "period")])[[2]],
-                         SIMPLIFY = FALSE
+                         unique(table[c("region", "period")])[[2]]
+                         # SIMPLIFY = FALSE
                   ))
 
   table <- table %>% mutate(value = .data[["shareEUEC"]]) %>% select(-"shareEUEC")

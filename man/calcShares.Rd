@@ -4,7 +4,7 @@
 \alias{calcShares}
 \title{Historic carrier-Enduse Shares w.r.t Final Energy}
 \usage{
-calcShares()
+calcShares(subtype = "nonthermal")
 }
 \value{
 data.frame with historic energy demands

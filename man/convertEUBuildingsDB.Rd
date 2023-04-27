@@ -9,7 +9,7 @@ convertEUBuildingsDB(x, subtype)
 \arguments{
 \item{x}{MAgPIE object with data from EU Buildings Database}
 
-\item{subtype}{character <category>.<variable>}
+\item{subtype}{character \if{html}{\out{<category>}}.\if{html}{\out{<variable>}}}
 }
 \value{
 clean MAgPIE object with

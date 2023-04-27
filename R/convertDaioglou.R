@@ -28,6 +28,7 @@ convertDaioglou <- function(x, subtype = "households.specific floor space") {
     filter(!(is.na(.data[["value"]]))) %>%
     mutate(region = gsub("Czech", "Czech Republic", .data[["region"]]),
            region = gsub("Korea, south", "Korea", .data[["region"]]),
+           region := .data[["region1"]],
            region = toolCountry2isocode(.data[["region"]]))
 
   if (subtype == "households.specific floor space") {

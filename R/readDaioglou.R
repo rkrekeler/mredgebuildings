@@ -115,9 +115,10 @@ readDaioglou <- function(subtype = "households.specific floor space") {
   data <- data %>%
     group_by(across(-"value")) %>%
     summarise(value = mean(.data[["value"]]), .groups = "drop") %>%
-    as.quitte() %>%
-    as.magpie() %>%
-    collapseDim(keepdim = "quintile")
+    mutate(source := gsub("[^A-Za-z0-9 ]", "", source)) %>%
+    select("region","period","variable","demographic","quintile","source","value") %>%
+    as.magpie() #%>%
+    # collapseDim(keepdim = "quintile")
 
   return(data)
 }

@@ -14,8 +14,10 @@
 #' @importFrom tidyr replace_na
 
 
-calcShares <- function() {
-  #---Read-In Data
+calcShares <- function(subtype="nonthermal") {
+
+  ###---READ-IN DATA
+
   ieaIO <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", aggregate = FALSE) %>%
     as.quitte(na.rm = TRUE)
 
@@ -52,6 +54,43 @@ calcShares <- function() {
               "space_cooling-natgas",
               "space_cooling-petrol")
 
+  # EDGE mapping for appliances split to "refrigerators"
+  edgeMap <- toolGetMapping("regionmappingEDGE.csv", type="regional")
+
+
+  # Percentage of Appliances for Refrigerators
+  fridgeShare <- rbind(
+    data.frame(RegionCode = "USA", share  = 0.12),
+    data.frame(RegionCode = c("EUR", "OCD", "RUS", "JPN"), share = 0.17),
+    data.frame(RegionCode = c("CHN", "IND", "NCD", "AFR", "MIE","OAS"), share = 0.3))
+
+
+  ###---FUNCTIONS
+
+  addThermal <- function(df, mapping, fridgeShare) {
+    df %>%
+      filter(enduse != "lighting") %>%
+      left_join(mapping %>%
+                  select(-"RegionCodeEUR", -"RegionCodeEUR_ETP", -"X") %>%
+                  rename(region = "CountryCode") %>%
+                  left_join(fridgeShare, by="RegionCode") %>%
+                  select(-"RegionCode"),
+                by = "region") %>%
+      mutate(value = ifelse(.data[["enduse"]] != "appliances",
+                            .data[["value"]],
+                            .data[["value"]] * .data[["share"]]),
+             enduse = ifelse(.data[["enduse"]] == "appliances",
+                             "refrigerators",
+                             as.character(.data[["enduse"]]))) %>%
+      select(-"share") %>%
+      group_by(across(all_of(c("region","period")))) %>%
+      mutate(value = .data[["value"]] / sum(.data[["value"]])) %>%
+      ungroup()
+  }
+
+  # browser()
+
+  ###---PROCESS DATA
 
   #---Calculate Combined EU-EC Shares for ETP Data
   sharesETP <- sharesOdyssee %>%
@@ -68,6 +107,16 @@ calcShares <- function() {
     mutate(value = ifelse(is.na(.data[["value.x"]]), .data[["value.y"]], .data[["value.x"]])) %>%
     select(-"value.x", -"value.y")
 
+
+
+  #---Thermal Part
+  if (subtype == "thermal") {
+    data <- data %>%
+      addThermal(edgeMap,fridgeShare)
+
+    sharesETP <- sharesETP %>%
+      addThermal(edgeMap,fridgeShare)
+  }
 
 
   #---Fill missing entries and consider excluded carrier-enduse combinations

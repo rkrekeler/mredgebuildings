@@ -35,6 +35,51 @@ calcFloorspacePast <- function() {
       mutate(demographic = "Total")
   }
 
+  # NOTE: The parameters I have used here, come from the linear regression done
+  # by Antoine Levesque. The parameters can be found on
+  # https://doi.org/10.1016/j.energy.2018.01.139
+  #
+  # The extrapolation is done with the formula:
+  #   Floorspace = alpha * GDPPop^beta * PopDensity^gamma
+  #
+  # Another idea would be to re-calibrate the parameters on our disaggregated
+  # data and then take the mean, since a general correlation between floorspace
+  # and GDP is seeked for. However, I would expect no significant deviation here.
+
+  # extrapolate missing entries with GDP/Cap and Population Density
+  extrapolate <- function(df, gdppop, dens, vars) {
+
+    # Clean DFs
+    G <- gdppop %>%
+      select(-"model",-"scenario",-"variable",-"unit") %>%
+      rename(gdppop = "value")
+
+    D <- dens %>%
+      select(-"model",-"scenario",-"variable",-"unit",-"data") %>%
+      rename(density = "value")
+
+    # Join DFs
+    data <- df %>%
+      factor.data.frame() %>%
+      interpolate_missing_periods(period = seq(1990,2020)) %>%
+      as.magpie() %>%
+      toolCountryFill() %>%
+      as.quitte() %>%
+      droplevels() %>%
+      left_join(G, by=c("region","period")) %>%
+      left_join(D, by=c("region","period"))
+
+
+    # Extrapolate Values
+    data <- data %>%
+      mutate(value = ifelse(is.na(.data[["value"]]),
+                            vars[1] * (.data[["gdppop"]]**vars[2]) * (.data[["density"]]**vars[3]),
+                            .data[["value"]])) %>%
+      select(-"gdppop", -"density")
+
+    return(data)
+  }
+
 
   # LOAD AND CALCULATE DATA ----------------------------------------------------
 
@@ -82,9 +127,16 @@ calcFloorspacePast <- function() {
   urbanshare <- calcOutput("UrbanPast", aggregate = FALSE) %>%
     as.quitte()
 
+  # population density
+  dens <- calcOutput("Density", aggregate = FALSE) %>%
+    as.quitte
+
   # compute specific floor space
   eea <- floorPerCap(eea, pop)
   ind <- floorPerCap(ind, pop)
+
+  # Regression variables are given in [alpha,beta,gamma]
+  vars <- c(exp(-0.49), 0.42, -0.03)
 
 
   # JOIN DATA ------------------------------------------------------------------
@@ -111,13 +163,21 @@ calcFloorspacePast <- function() {
     mutate(demographic = "Total") %>%
     rbind(data)
 
-  # remove urban and rural data
+  # remove urban and rural data and extrapolate missing entries
   data <- data %>%
     filter(.data[["demographic"]] == "Total") %>%
+    extrapolate(gdppop, dens, vars)
+
+
+
+  # OUTPUT ---------------------------------------------------------------------
+
+  # browser()
+
+  data <- data %>%
     as.quitte() %>%
     as.magpie() %>%
-    collapseDim() %>%
-    toolCountryFill(verbosity = 2)
+    collapseDim()
 
   pop <- pop %>%
     as.quitte() %>%
