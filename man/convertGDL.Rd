@@ -9,7 +9,7 @@ convertGDL(x, subtype)
 \arguments{
 \item{x}{MAgPIE object with data from EU Buildings Database}
 
-\item{subtype}{\if{html}{\out{<database>}}.\if{html}{\out{<variable>}}}
+\item{subtype}{<database>.<variable>}
 }
 \value{
 clean MAgPIE object with data from EU Buildings Database
