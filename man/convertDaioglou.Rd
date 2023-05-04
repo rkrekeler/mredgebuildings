@@ -9,7 +9,7 @@ convertDaioglou(x, subtype = "households.specific floor space")
 \arguments{
 \item{x}{MAgPIE object with data from Daioglou et al.}
 
-\item{subtype}{\if{html}{\out{<dataFile>}}.\if{html}{\out{<variable>}}}
+\item{subtype}{<dataFile>.<variable>}
 }
 \value{
 clean MAgPIE object with unique data points
