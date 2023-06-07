@@ -10,7 +10,7 @@ https://globaldatalab.org/
 readGDL(subtype)
 }
 \arguments{
-\item{subtype}{<database>.<variable>}
+\item{subtype}{\if{html}{\out{<database>}}.\if{html}{\out{<variable>}}}
 }
 \value{
 magpie object

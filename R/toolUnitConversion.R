@@ -26,8 +26,6 @@ toolUnitConversion <- function(x, unitConversion, dim = 3.1,
          "'from', 'to', and 'factor'.")
   }
 
-  # convert to ASCII
-  getItems(x, dim) <- iconv(getItems(x, dim), "latin1", "ASCII", "byte")
 
   # all units in data
   units <- unique(gsub("^.*_", "", grep("_", getItems(x, dim), value = TRUE)))
