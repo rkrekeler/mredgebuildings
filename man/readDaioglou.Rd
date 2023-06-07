@@ -7,7 +7,7 @@
 readDaioglou(subtype = "households.specific floor space")
 }
 \arguments{
-\item{subtype}{<dataFile>.<variable>}
+\item{subtype}{\if{html}{\out{<dataFile>}}.\if{html}{\out{<variable>}}}
 }
 \description{
 Compilation of survey data. Quintile 0 stands for the entire population.
