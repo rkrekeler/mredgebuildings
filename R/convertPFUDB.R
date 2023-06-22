@@ -17,20 +17,10 @@
 
 convertPFUDB <- function(x) {
 
+
   # READ-IN DATA ---------------------------------------------------------------
 
   data <- x
-  # file <- "../../inputdata/sources/PFUDB/pfudb_antoine_corr_TJ.csv"
-  # data <- read.csv(file)
-
-  # Make columns lowercase
-  colnames(data) <- tolower(colnames(data))
-
-  # browser()
-  data <- data %>%
-    as.quitte() %>%
-    factor.data.frame()
-
 
   # Get Weights
   iea_fe <- calcOutput("IEAPFU", aggregate=FALSE) %>%
@@ -53,7 +43,14 @@ convertPFUDB <- function(x) {
 
   # PROCESS DATA ---------------------------------------------------------------
 
-  # browser()
+  # Make columns lowercase
+  colnames(data) <- tolower(colnames(data))
+
+  data <- data %>%
+    as.quitte() %>%
+    quitte::factor.data.frame()
+
+
   # Match Periods
   pfu <- data %>%
     as.quitte() %>%
@@ -105,8 +102,13 @@ convertPFUDB <- function(x) {
       mutate(value = .data[['value']] * TJ2EJ) %>%
       rename(carrier = "variable",
              enduse = "use") %>%
-      select(c("region","period","carrier","enduse","unit","value")) %>%
-      factor.data.frame() %>%
+      select(c("region","period","carrier","enduse","unit","value"))
+
+
+    # OUTPUT -------------------------------------------------------------------
+
+    pfu <- pfu %>%
+      quitte::factor.data.frame() %>%
       droplevels() %>%
       as.magpie() %>%
       toolCountryFill()

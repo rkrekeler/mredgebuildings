@@ -61,8 +61,8 @@ calcDensity <- function() {
 
   return(list(x = data,
               weight = NULL,
-              unit = "cap/m2",
-              description = "Population Density in cap per m2"))
+              unit = "m^-2",
+              description = "Population Density in m^-2"))
 
 
 

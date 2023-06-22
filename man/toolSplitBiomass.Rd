@@ -11,13 +11,11 @@ toolSplitBiomass(df, df_gdppop, min = 10000, max = 15000, varName = "biomass")
 
 \item{df_gdppop}{dataframe containing the GDP per Capita}
 
-\item{min}{lower threshold of GDP per Capita}
+\item{min}{lower threshold of GDP per Capita in USD 2005}
 
-\item{max}{upper threshold of GDP per Capita}
+\item{max}{upper threshold of GDP per Capita in USD 2005}
 
 \item{varName}{nomenclature of biomass}
-
-\item{newvarName}{nomenclature of mod/trad biomass}
 }
 \value{
 factor.data.frame

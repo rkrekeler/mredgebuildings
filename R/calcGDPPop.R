@@ -31,28 +31,6 @@ calcGDPPop <- function() {
     select(-"value.x",-"value.y")
 
 
-  # Restrict to only historic Data; Scenarios will be obsolete
-  # if(histOnly) {
-  #   gdpPop <- gdpPop %>%
-  #     filter(.data[["period"]] <= presentYear,
-  #            .data[["variable"]] == "gdppop_SSP1") %>%
-  #     mutate(variable = "gdppop")
-  #
-  #   pop <- pop %>%
-  #     filter(.data[["period"]] <= presentYear,
-  #            .data[["variable"]] == "pop_SSP1") %>%
-  #     mutate(variable = "pop")
-  # }
-  #
-  #
-  # # Restrict to a subset of scenarios
-  # if(scenOnly) {
-  #   gdpPop <- gdpPop %>%
-  #     filter(stringi::stri_sub(.data[["variable"]],-4) %in% scen)
-  #
-  #   pop <- pop %>%
-  #     filter(stringi::stri_sub(.data[["variable"]],-4) %in% scen)
-  # }
 
   # OUTPUT ---------------------------------------------------------------------
 

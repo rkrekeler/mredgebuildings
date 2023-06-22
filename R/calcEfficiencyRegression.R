@@ -15,6 +15,8 @@
 #'
 #' @author Hagen Tockhorn
 #'
+#' @importFrom quitte aggregate_map
+#'
 #' @export
 
 
@@ -24,8 +26,6 @@ calcEfficiencyRegression <- function() {
 
   # Extrapolate historic FE-UE Efficiencies from Fit Function
   calcPars <- function(df, var) {
-
-    # browser()
 
     # Prepare Historic Data
     dataHist <- df %>%
@@ -66,10 +66,8 @@ calcEfficiencyRegression <- function() {
 
   # PARAMETERS -----------------------------------------------------------------
 
-  exceptions <- c("water_heating.natgas",
-                  "space_heating.natgas",
-                  "cooking.natgas")
-
+  # Minimum Requirement to be considered
+  minEfficiency <- 0.05
 
 
 
@@ -81,19 +79,19 @@ calcEfficiencyRegression <- function() {
   data <- pfu %>%
     mutate(value = ifelse(is.na(.data[["value"]]), 0, .data[["value"]])) %>%
     unite("variable", "enduse", "carrier", sep=".") %>%
-    aggregate_map(
+    quitte::aggregate_map(
       mapping = regionmapping[!is.na(regionmapping$PFUDB), c("iso","PFUDB")],
       by = c("region" = "iso"),
       forceAggregation = TRUE)
 
   # Aggregate GDPpop to PFU Country Code
   gdppop <- gdppop %>%
-    aggregate_map(
+    quitte::aggregate_map(
       mapping = regionmapping[!is.na(regionmapping$PFUDB), c("iso","PFUDB")],
       by = c("region" = "iso"),
       forceAggregation = TRUE,
       weights = pop %>%
-        select(-"unit",-"variable",-"scenario",-"model") %>%
+        select("region","period","value") %>%
         rename(weight = "value"),
       weight_item_col = "region",
       weight_val_col = "weight") %>%
@@ -113,22 +111,18 @@ calcEfficiencyRegression <- function() {
     mutate(value = .data[["ue"]] / .data[["fe"]]) %>%
     select(-"fe",-"ue")
 
+  # Filter out unrealistic Efficiencies
+  data <- filter(data, value > minEfficiency)
 
-  # List of all Carrier-Enduse Combinations
   vars <- data %>%
     group_by(.data[["variable"]]) %>%
-    filter(!(.data[["variable"]] %in% c("gdppop", exceptions)),
-           !grepl("biomod", .data[["variable"]]),
-           !all(is.na(.data[["value"]])),
-           !grepl("appliances", .data[["variable"]])) %>%
+    filter(.data[["variable"]] != "gdppop",
+           !all(is.na(.data[["value"]]))) %>%
     getElement("variable") %>%
     unique()
 
-  vars <- vars[vars != "appliances_light.natgas"]
-
 
   #--- Calculate Parameters
-
   parsFull <- data.frame()
 
   for (var in vars) {
@@ -138,14 +132,16 @@ calcEfficiencyRegression <- function() {
       rbind(parsFull)
   }
 
+
+
+  # OUTPUT ---------------------------------------------------------------------
+
+  # Trim Dataframe
   parsFull <- parsFull %>%
-    # gather(key="unit", value="value", "Asym", "R0", "lrc") %>%
     separate("variable", c("enduse","carrier"), sep="\\.") %>%
     mutate(region = "GLO") %>%
     select("region","carrier","enduse","Asym","R0","lrc")
 
-
-  # OUTPUT ---------------------------------------------------------------------
 
   return(list(
     x = as.magpie(parsFull),

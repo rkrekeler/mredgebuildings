@@ -11,7 +11,7 @@
 #'
 #' @returns MAgPIE object with historic floor space
 #'
-#' @author Robin Hasse, Antoine Levesque
+#' @author Robin Hasse, Antoine Levesque, Hagen Tockhorn
 #'
 #' @importFrom madrat readSource calcOutput toolCountryFill
 #' @importFrom quitte as.quitte calc_addVariable
@@ -171,8 +171,6 @@ calcFloorspacePast <- function() {
 
 
   # OUTPUT ---------------------------------------------------------------------
-
-  # browser()
 
   data <- data %>%
     as.quitte() %>%

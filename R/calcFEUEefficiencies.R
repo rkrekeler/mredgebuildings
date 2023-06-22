@@ -7,6 +7,8 @@
 #' assumed efficiency levels. The parameters of that curve are derived by a
 #' regression with observations of IEA data.
 #'
+#' @param GasBioEquality Determines if Natgas and Biomod share the same efficiencies
+#'
 #' @references De Stercke, S. (2014). Dynamics of Energy Systems: A Useful
 #' Perspective (Interim Report, p. 68). IIASA.
 #' http://pure.iiasa.ac.at/id/eprint/11254/1/IR-14-013.pdf
@@ -16,29 +18,7 @@
 #' @export
 
 
-calcFEUEefficiencies <- function() {
-
-  # FUNCTIONS ------------------------------------------------------------------
-
-  # Extrapolate historic FE-UE Efficiencies from Fit Function
-  extrapolEff <- function(df, pars) {
-
-    # Assign Parameters to carrier-enduse Combination
-    dataHist <- df %>%
-      removeColNa() %>%
-      left_join(pars, by = c("carrier", "enduse")) %>%
-      na.omit()
-
-    # Predict Historic Efficiencies with Non-Linear Model
-    dataHist <- dataHist %>%
-      group_by("carrier", "enduse") %>%
-      mutate(pred = SSasymp(.data[["gdppop"]], .data[["Asym"]], .data[["R0"]], .data[["lrc"]]))
-
-
-
-  }
-
-
+calcFEUEefficiencies <- function(GasBioEquality = TRUE) {
 
   # READ-IN DATA ---------------------------------------------------------------
 
@@ -48,63 +28,27 @@ calcFEUEefficiencies <- function() {
   gdppop <- calcOutput("GDPPop", aggregate = FALSE) %>%
     as.quitte()
 
-  # Get Mapping (ISO<->PFU)
-  # regionmapping <- toolGetMapping("pfu_regionmapping.csv", type="regional")
-  #
-  # # Get Population Data
-  # pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
-  #   as.quitte()
+  parsCorr <- read.csv("correct_efficiencies.csv", sep = ";")
 
 
   # PARAMETERS -----------------------------------------------------------------
 
-  exceptions <- c("water_heating.natgas",
-                  "space_heating.natgas",
-                  "cooking.natgas")
+  eqEffs <- c("water_heating.natgas" = "water_heating.biomod",
+              "space_heating.natgas" = "space_heating.biomod",
+              "cooking.natgas" = "cooking.biomod")
 
 
   # PROCESS DATA ---------------------------------------------------------------
 
-  # Combine with GDP per Cap
+  # Combine with GDP per Cap for Period 1990-2020
   data <- pfu %>%
+    interpolate_missing_periods(period = seq(1990,2020)) %>%
     mutate(value = ifelse(is.na(.data[["value"]]), 0, .data[["value"]])) %>%
     left_join(gdppop %>%
                 select(-"model",-"scenario",-"unit",-"variable") %>%
                 rename(gdppop = "value"),
               by = c("region","period")) %>%
     select(-"model", -"scenario", -"variable")
-
-  # gdppop <- gdppop %>%
-  #   # aggregate_map(
-  #   #   mapping = regionmapping[!is.na(regionmapping$PFUDB), c("iso","PFUDB")],
-  #   #   by = c("region" = "iso"),
-  #   #   forceAggregation = TRUE,
-  #   #   weights = pop %>%
-  #   #     select(-"unit",-"variable",-"scenario",-"model") %>%
-  #   #     rename(weight = "value"),
-  #   #   weight_item_col = "region",
-  #   #   weight_val_col = "weight") %>%
-  #   select(-"model",-"scenario",-"unit",-"variable")
-
-
-  # Combine with GDP per Cap
-  # data <- data %>%
-  #   left_join(gdppop %>%
-  #             rename(gdppop = "value"),
-  #           by = c("region","period"))
-
-  # Calculate Efficiencies as Regression-Input
-  # data <- data %>%
-  #   select(-"model",-"scenario") %>%
-  #   spread(.data[["unit"]], .data[["value"]]) %>%
-  #   mutate(value = .data[["ue"]] / .data[["fe"]]) %>%
-  #   select(-"fe",-"ue")
-
-  # List of all Carrier-Enduse Combinations
-  vars <- data %>%
-    filter(!.data[["variable"]] %in% exceptions) %>%
-    getElement("variable") %>%
-    unique()
 
 
   #--- Calculate Efficiency Estimates
@@ -116,7 +60,108 @@ calcFEUEefficiencies <- function() {
     select(-"model", -"scenario", -"region", -"unit", -"period")
 
 
-  a <- extrapolEff(data, regPars)
+  # Tediously transform the corrected parameters ... must be a better solution
+  parsCorr <- parsCorr %>%
+    mutate("space_cooling.elec" = gsub(" ", "", .data[["space_cooling.elec"]]),
+           "space_cooling.elec" = gsub("\\,", "\\.", .data[["space_cooling.elec"]]),
+           "space_cooling.elec" = as.numeric(.data[["space_cooling.elec"]])) %>%
+    gather(key = "variable", value = "value", "space_cooling.elec", "water_heating.elec", "space_heating.elec") %>%
+    spread(key="parameter", value="value") %>%
+    separate(col = "variable", into = c("enduse","carrier"), sep = "\\.") %>%
+    select(-"phi3") %>%
+    rename(AsymCorr = "Asym", lrcCorr = "lrc", R0Corr = "R0")
+
+
+
+  # Correct Regression Parameters for electrical Heat Transfer Technologies
+  regPars <- regPars %>%
+    left_join(parsCorr, by = c("carrier", "enduse")) %>%
+    mutate(Asym = ifelse(is.na(.data[["AsymCorr"]]), .data[["Asym"]], .data[["AsymCorr"]]),
+           R0 = ifelse(is.na(.data[["R0Corr"]]), .data[["R0"]], .data[["R0Corr"]]),
+           lrc = ifelse(is.na(.data[["lrcCorr"]]), .data[["lrc"]], .data[["lrcCorr"]])) %>%
+    select(-"AsymCorr", -"R0Corr", -"lrcCorr")
+
+
+  # Assign Parameters to carrier-enduse Combination
+  dataHist <- data %>%
+    removeColNa() %>%
+    left_join(regPars, by = c("carrier", "enduse")) %>%
+    na.omit()
+
+
+  # Predict Historic Efficiencies with Non-Linear Model
+  dataHist <- dataHist %>%
+    spread(key = "unit", value = "value") %>%
+    mutate(efficiency = .data[["ue"]] / .data[["fe"]]) %>%
+    group_by(across(all_of(c("carrier", "enduse")))) %>%
+    mutate(pred = SSasymp(.data[["gdppop"]], .data[["Asym"]], .data[["R0"]], .data[["lrc"]])) %>%
+    ungroup() %>%
+    select(-"Asym",-"R0",-"lrc", -"fe", -"ue")
+
+
+  #--- Match Region-Specific Curves to fill non-existing Data Points
+
+  # Create Correction Factor to adjust Projections
+  corrFactors <- dataHist %>%
+    mutate(factor = .data[["efficiency"]] / .data[["pred"]]) %>%
+    select(-"gdppop", -"efficiency", -"pred") %>%
+    interpolate_missing_periods(value = "factor", expand.values = TRUE)
+
+
+  # NOTE: Countries missing the entire period range for a EC-EU-combination
+  #       will be filled-up w/ non-corrected efficiency projections.
+
+  dataHist <- dataHist %>%
+    left_join(corrFactors, by = c("region","period","enduse","carrier")) %>%
+    mutate(value = ifelse(is.na(.data[["factor"]]),
+                          .data[["pred"]],
+                          ifelse(is.na(.data[["efficiency"]]),
+                                 .data[["pred"]] * .data[["factor"]],
+                                 .data[["efficiency"]])))
+
+
+  # Trim Dataframe
+  efficiencies <- dataHist %>%
+    select(-"gdppop", -"efficiency", -"pred", -"factor")
+
+
+  #--- Corrections
+
+  # Biomod Efficiency identical to Natgas
+  if (GasBioEquality) {
+    gasEffs <- efficiencies %>%
+      unite("variable", "enduse", "carrier", sep = ".") %>%
+      filter(.data[["variable"]] %in% names(eqEffs))
+
+    for (gasVar in names(eqEffs)) {
+      bioEffs <- gasEffs %>%
+        filter(.data[["variable"]] == gasVar) %>%
+        mutate(variable = eqEffs[gasVar][[1]]) %>%
+        separate("variable", into = c("enduse","carrier"), sep = "\\.")
+
+      efficiencies <- rbind(efficiencies, bioEffs)
+    }
+  }
+
+
+  # OUTPUT ---------------------------------------------------------------------
+
+  # Weights = FE?
+
+  efficiencies <- dataHist %>%
+    select(-"gdppop", -"efficiency", -"pred", -"factor") %>%
+    as.magpie()
+
+  return(list(
+    x = efficiencies,
+    weights = NULL,
+    min = 0,
+    description = "Historical Conversion Efficiencies from FE to UE"
+  ))
+
+
+
+
 
 
 }

@@ -18,7 +18,6 @@
 readPFUDB <- function() {
 
   file <- "pfudb_antoine_corr_TJ.csv"
-  # file <- "../../inputdata/sources/PFUDB/pfudb_antoine_corr_TJ.csv"
 
   # Read Data
   data <- read.csv(file)

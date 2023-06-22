@@ -33,12 +33,13 @@ calcFEUE <- function() {
     as.quitte()
 
 
-  efficiencies <- ...
+  efficiencies <- calcOutput("FEUEefficiencies", aggregate = FALSE) %>%
+    as.quitte()
 
 
   # PROCESS DATA ---------------------------------------------------------------
 
-  feue <- fe %>%
+  ue <- fe %>%
     sumDF(c("appliances","lightning"), "appliances_light") %>%
     spread("unit","value") %>%
     left_join(efficiencies,
@@ -52,11 +53,11 @@ calcFEUE <- function() {
   # OUTPUT ---------------------------------------------------------------------
 
   return(list(
-    x = feue,
+    x = ue,
     weight = NULL,
     unit = "EJ",
     min = 0,
-    description = "Final and Useful Energy Demand ..."
+    description = "Final and Useful Energy Demand scaled with FE-UE-efficiencies"
   ))
 
 

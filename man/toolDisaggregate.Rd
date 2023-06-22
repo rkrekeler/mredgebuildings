@@ -5,13 +5,26 @@
 \title{Disaggregates Enduse and Carrier Shares into combined enduse-carrier shares
 via a quadratic optimization for an under-determined linear set of equations.}
 \usage{
-toolDisaggregate(data, sharesEU, sharesEC)
+toolDisaggregate(
+  data,
+  sharesEU,
+  etpEU,
+  exclude = NULL,
+  sharesReplace = NULL,
+  correct = FALSE
+)
 }
 \arguments{
-\item{data}{data.frame containing enduse-carrier shares for first estimation
-in optimization problem. Columns 'enduse', 'carrier' and 'value' are required.}
+\item{data}{data.frame containing data on carrier-specific energy consumption.
+Columns 'carrier' and 'value' are required.}
 
 \item{sharesEU}{data.frame containing aggregated enduse shares}
+
+\item{exclude}{list containing "enduse-carrier" pairs to be excluded}
+
+\item{sharesReplace}{data.frame containing existing disaggregated carrier-enduse shares}
+
+\item{correct}{boolean that determines whether values shall be corrected for}
 
 \item{sharesEC}{data.frame containing aggregated carrier shares}
 }

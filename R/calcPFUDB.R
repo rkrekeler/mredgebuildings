@@ -49,15 +49,61 @@ calcPFUDB <- function(){
     "Wind"               = "wind"
   )
 
+  # Enduse-Carrier combinations which will be systematically excluded
+  exclude <- c("appliances-natgas",
+               "appliances-petrol",
+               "appliances-biomod",
+               "appliances-biotrad",
+               "appliances-coal",
+               "appliances-heat",
+               "refrigerators-natgas",
+               "refrigerators-petrol",
+               "refrigerators-biomod",
+               "refrigerators-biotrad",
+               "refrigerators-coal",
+               "refrigerators-heat",
+               "lighting-biomod",
+               "lighting-biotrad",
+               "lighting-coal",
+               "lighting-heat",
+               "cooking-heat",
+               "space_cooling-heat",
+               "space_cooling-biomod",
+               "space_cooling-biotrad",
+               "space_cooling-coal",
+               "space_cooling-natgas",
+               "space_cooling-petrol")
+
+
+
   # READ-IN DATA ---------------------------------------------------------------
 
   pfu <- readSource("PFUDB") %>%
     as.quitte()
 
-  sharesEC <- calcOutput("Shares", aggregate=FALSE) %>%
+
+  # Relevant toolDisaggregate Input-Data
+
+  sharesEU <- calcOutput("Shares",
+                         subtype = "enduse_thermal",
+                         aggregate=FALSE)  %>%
     as.quitte()
-  sharesTh <- calcOutput("Shares", aggregate=FALSE, subtype="thermal") %>%
-    as.quitte()
+
+  etpEU <- calcOutput("Shares",
+                      subtype = "enduse_thermal",
+                      feOnly = TRUE,
+                      aggregate = FALSE) %>%
+              as.quitte()
+
+  sharesOdyssee <- calcOutput("ShareOdyssee",
+                              subtype = "enduse_carrier",
+                              aggregate = FALSE) %>%
+              as.quitte()
+
+
+  # ETP mapping
+  regmapping <- toolGetMapping("regionmappingIEA_ETP.csv", where = "mappingfolder", type = "regional")
+
 
 
   # PROCESS DATA ---------------------------------------------------------------
@@ -69,22 +115,11 @@ calcPFUDB <- function(){
   # Map Carrier Names and Convert Units
   pfu <- pfu %>%
     revalue.levels(carrier = carriersnames) %>%
-    factor.data.frame() %>%
+    quitte::factor.data.frame() %>%
     mutate(value = replace_na(.data[["value"]],0))
 
 
-  # Reduce the data frames dimensions to the minimal set
-  reg_per_minimal_set <- Reduce(inner_join,
-                      list(unique(pfu[c("region", "period")]),
-                      unique(sharesTh[c("region", "period")]),
-                      unique(sharesEC[c("region", "period")])))
-
-  pfu      <- left_join(reg_per_minimal_set, pfu) %>%
-    select(-"model",-"scenario",-"variable")
-  sharesEC <- left_join(reg_per_minimal_set, sharesEC) %>%
-    select(-"model",-"scenario",-"variable",-"unit")
-  sharesTh <- left_join(reg_per_minimal_set, sharesTh) %>%
-    select(-"model",-"scenario",-"variable",-"unit")
+  pfu <- select(pfu, -"model",-"scenario",-"variable")
 
 
   ## Disaggregate into Thermal and Non-Thermal Part ----------------------------
@@ -105,13 +140,30 @@ calcPFUDB <- function(){
                   forceAggregation = TRUE)
 
 
+  # Prepare toolDisaggregate Input
+
+  sharesOdyssee <- sharesOdyssee %>%
+    select("region", "period", "carrier", "enduse", "value")
+
+  regmapping <- regmapping %>%
+    mutate(EEAReg = ifelse(.data[["EEAReg"]] == "rest",
+                           .data[["OECD"]],
+                           .data[["EEAReg"]]))
+
+  etpEU <- select(etpEU, "region", "period", "enduse", "value") %>%
+    left_join(regmapping %>%
+                select("CountryCode", "EEAReg") %>%
+                rename(region = "CountryCode"),
+              by = "region")
+
+
   # Disaggregate Low-T Heat into different enduses
   pfuTherm <- pfu %>%
     filter(enduse == "Low-T heat") %>%
     select(-"enduse") %>%
-    left_join(sharesTh, by = c("region","period","carrier")) %>%
-    mutate(value = .data[["value.x"]] * .data[["value.y"]]) %>%
-    select(-"value.x",-"value.y")
+    rename(variable = "carrier") %>%
+    toolDisaggregate(sharesEU, etpEU, exclude = exclude, sharesReplace = sharesOdyssee) %>%
+    select(colnames(pfuNonTherm))
 
 
   # Join Non-Thermal and Thermal Part
@@ -126,12 +178,16 @@ calcPFUDB <- function(){
       aggregate_map(mapping = enduseMappingRef,
                     by = "enduse",
                     variable = "enduse",
-                    forceAggregation = TRUE)) %>%
+                    forceAggregation = TRUE))
+
+
+  # OUTPUT ---------------------------------------------------------------------
+
+  pfu_res <- pfu_res %>%
     as.data.frame() %>%
     as.magpie()
 
 
-  # OUTPUT ---------------------------------------------------------------------
   data <- list(
     x = pfu_res,
     weight = NULL,

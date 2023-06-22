@@ -4,7 +4,10 @@
 \alias{calcEfficiencyRegression}
 \title{Calculation Regression Parameters for FE-UE Efficiency Projection}
 \usage{
-calcEfficiencyRegression()
+calcEfficiencyRegression(GasBioEquality = TRUE)
+}
+\arguments{
+\item{GasBioEquality}{Determines if Natgas and Biomod share the same efficiencies}
 }
 \description{
 Calculate the regression parameters for the projection of final (FE)
