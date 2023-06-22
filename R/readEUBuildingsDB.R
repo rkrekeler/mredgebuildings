@@ -31,12 +31,15 @@ readEUBuildingsDB <- function(subtype = "") {
   variable <- strsplit(subtype, ".", fixed = TRUE)[[1]][2]
 
   # available source files
-  files <- list.files()
+  files <- list.files(pattern = "\\.csv$")
   files <- stats::setNames(files, gsub(".csv", "", files))
   file <- toolSubtypeSelect(category, files)
 
   # read csv file and stack regions
-  data <- read.csv(file, skip = 1, header = FALSE)
+  data <- read.csv(file, skip = 1, header = FALSE, encoding = "ISO-8859-1")
+  for (j in 1:2) {
+    data[, j] <- iconv(data[, j], "ISO-8859-1", "ASCII", "byte")
+  }
   startLines <- which(data[, 1] == "") - 1
   data <- do.call("rbind", lapply(seq_along(startLines), function(i) {
     endLine <- ifelse(i == length(startLines),
