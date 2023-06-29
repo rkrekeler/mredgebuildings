@@ -726,7 +726,8 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
         group_by(across(all_of(c("region", "period")))) %>%
         mutate(value = proportions(.data[["value"]]))
       stock <- stock %>%
-        left_join(heatingShares, by = c("region", "period")) %>%
+        left_join(heatingShares, by = c("region", "period"),
+                  relationship = "many-to-many") %>%
         mutate(value = .data[["value.x"]] * .data[["value.y"]]) %>%
         select(-"value.x", -"value.y") %>%
         rename(heating = "carrier")
