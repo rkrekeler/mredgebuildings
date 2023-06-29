@@ -1,14 +1,5 @@
 #' Read EHI Heating Market Report
 #'
-#' PDF market reports on Renewables in Europe
-#'
-#' @source https://www.eurobserv-er.org/
-#' @note I download the report and snip a png of the table. Then I extract the
-#' data with [this online tool](https://extracttable.com/) and save it as a
-#' tabular csv in the source folder. The Tool is not fully reliable. This
-#' function throws an error if values don't sum up. You then have to correct the
-#' csv file manually.
-#'
 #' @param subtype <report series>.<variable>
 #' @returns magpie object
 #'
