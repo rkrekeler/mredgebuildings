@@ -9,7 +9,8 @@
 #' removed additionally.
 #'
 #' @param subtype <dataFile>.<variable>
-#' @param x MAgPIE object with data from Daioglou et al.
+#' @param x MAgPIE object with data from Daioglou et al. #nolint
+#'
 #' @return clean MAgPIE object with unique data points
 #'
 #' @author Robin Hasse, Antoine Levesque
@@ -26,9 +27,9 @@ convertDaioglou <- function(x, subtype = "households.specific floor space") {
   data <- x %>%
     as.quitte() %>%
     filter(!(is.na(.data[["value"]]))) %>%
-    mutate(region = gsub("Czech", "Czech Republic", .data[["region"]]),
-           region = gsub("Korea, south", "Korea", .data[["region"]]),
-           region := .data[["region1"]],
+    mutate(region1 = gsub("Czech", "Czech Republic", .data[["region1"]]),
+           region1 = gsub("Korea, south", "Korea", .data[["region1"]]),
+           region = .data[["region1"]],
            region = toolCountry2isocode(.data[["region"]]))
 
   if (subtype == "households.specific floor space") {
@@ -37,7 +38,7 @@ convertDaioglou <- function(x, subtype = "households.specific floor space") {
     sourceUN <- unique(grep("UN habitat", data[["source"]], value = TRUE))
     countryUN <- data %>%
       filter(.data[["source"]] %in% sourceUN) %>%
-      getElement("region") %>%
+      getElement(.data[["region"]]) %>%
       unique()
     countryUNplus <- data %>%
       filter(.data[["region"]] %in% countryUN,

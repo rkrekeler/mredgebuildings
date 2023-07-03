@@ -15,12 +15,11 @@
 #' @export
 
 
-calcPFUDB <- function(){
-
+calcPFUDB <- function() {
   # FUNCTIONS ------------------------------------------------------------------
 
   # Sum to Carrier Level
-  sum_df <- function(df, variables, newname) {
+  sumDf <- function(df, variables, newname) {
     carrierSum <- df %>%
       filter(.data[["carrier"]] %in% variables) %>%
       group_by(across(-any_of(c("value", "carrier")))) %>%
@@ -86,7 +85,7 @@ calcPFUDB <- function(){
 
   sharesEU <- calcOutput("Shares",
                          subtype = "enduse_thermal",
-                         aggregate=FALSE)  %>%
+                         aggregate = FALSE)  %>%
     as.quitte()
 
   etpEU <- calcOutput("Shares",
@@ -109,17 +108,17 @@ calcPFUDB <- function(){
   # PROCESS DATA ---------------------------------------------------------------
 
   # Generalize Heat Carriers
-  pfu <- sum_df(pfu, c("Heat", "Geothermal", "Solar"), "heat")
+  pfu <- sumDf(pfu, c("Heat", "Geothermal", "Solar"), "heat")
 
 
   # Map Carrier Names and Convert Units
   pfu <- pfu %>%
     revalue.levels(carrier = carriersnames) %>%
     quitte::factor.data.frame() %>%
-    mutate(value = replace_na(.data[["value"]],0))
+    mutate(value = replace_na(.data[["value"]], 0))
 
 
-  pfu <- select(pfu, -"model",-"scenario",-"variable")
+  pfu <- select(pfu, -"model", -"scenario", -"variable")
 
 
   ## Disaggregate into Thermal and Non-Thermal Part ----------------------------
@@ -133,7 +132,7 @@ calcPFUDB <- function(){
 
   # Aggregate uses from PFU to appliances_light and keep the df as Non-thermal
   pfuNonTherm <- pfu %>%
-    filter(enduse != "Low-T heat") %>%
+    filter(.data[["enduse"]] != "Low-T heat") %>%
     aggregate_map(mapping = enduseMapping,
                   by = "enduse",
                   variable = "enduse",
@@ -159,7 +158,7 @@ calcPFUDB <- function(){
 
   # Disaggregate Low-T Heat into different enduses
   pfuTherm <- pfu %>%
-    filter(enduse == "Low-T heat") %>%
+    filter(.data[["enduse"]] == "Low-T heat") %>%
     select(-"enduse") %>%
     rename(variable = "carrier") %>%
     toolDisaggregate(sharesEU, etpEU, exclude = exclude, sharesReplace = sharesOdyssee) %>%
@@ -167,14 +166,14 @@ calcPFUDB <- function(){
 
 
   # Join Non-Thermal and Thermal Part
-  pfu_res <- rbind(pfuTherm,pfuNonTherm)
+  pfuRes <- rbind(pfuTherm, pfuNonTherm)
 
 
   # Include "refrigerators" in "appliances_light"
-  pfu_res <- rbind(
-    pfu_res %>%
+  pfuRes <- rbind(
+    pfuRes %>%
       filter(!(.data[["enduse"]] %in% enduseMappingRef[[1]])),
-    pfu_res %>%
+    pfuRes %>%
       aggregate_map(mapping = enduseMappingRef,
                     by = "enduse",
                     variable = "enduse",
@@ -183,13 +182,13 @@ calcPFUDB <- function(){
 
   # OUTPUT ---------------------------------------------------------------------
 
-  pfu_res <- pfu_res %>%
+  pfuRes <- pfuRes %>%
     as.data.frame() %>%
     as.magpie()
 
 
   data <- list(
-    x = pfu_res,
+    x = pfuRes,
     weight = NULL,
     unit = "EJ",
     min = 0,

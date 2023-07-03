@@ -16,17 +16,16 @@
 #' @author Hagen Tockhorn
 #'
 #' @importFrom quitte aggregate_map
+#' @importFrom stats as.formula
 #'
 #' @export
 
 
 calcEfficiencyRegression <- function() {
-
   # FUNCTIONS ------------------------------------------------------------------
 
   # Extrapolate historic FE-UE Efficiencies from Fit Function
   calcPars <- function(df, var) {
-
     # Prepare Historic Data
     dataHist <- df %>%
       removeColNa() %>%
@@ -56,7 +55,7 @@ calcEfficiencyRegression <- function() {
     as.quitte()
 
   # Get Mapping (ISO<->PFU)
-  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type="regional")
+  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type = "regional")
 
   # Get Population Data
   pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
@@ -78,41 +77,41 @@ calcEfficiencyRegression <- function() {
   # Aggregate PFU Data to PFU Country Code
   data <- pfu %>%
     mutate(value = ifelse(is.na(.data[["value"]]), 0, .data[["value"]])) %>%
-    unite("variable", "enduse", "carrier", sep=".") %>%
+    unite("variable", "enduse", "carrier", sep = ".") %>%
     quitte::aggregate_map(
-      mapping = regionmapping[!is.na(regionmapping$PFUDB), c("iso","PFUDB")],
+      mapping = regionmapping[!is.na(regionmapping$PFUDB), c("iso", "PFUDB")],
       by = c("region" = "iso"),
       forceAggregation = TRUE)
 
   # Aggregate GDPpop to PFU Country Code
   gdppop <- gdppop %>%
     quitte::aggregate_map(
-      mapping = regionmapping[!is.na(regionmapping$PFUDB), c("iso","PFUDB")],
+      mapping = regionmapping[!is.na(regionmapping$PFUDB), c("iso", "PFUDB")],
       by = c("region" = "iso"),
       forceAggregation = TRUE,
       weights = pop %>%
-        select("region","period","value") %>%
+        select("region", "period", "value") %>%
         rename(weight = "value"),
       weight_item_col = "region",
       weight_val_col = "weight") %>%
-    select(-"model",-"scenario",-"unit",-"variable")
+    select(-"model", -"scenario", -"unit", -"variable")
 
 
   # Combine with GDP per Cap
   data <- data %>%
     left_join(gdppop %>%
                 rename(gdppop = "value"),
-              by = c("region","period"))
+              by = c("region", "period"))
 
   # Calculate Efficiencies as Regression-Input
   data <- data %>%
-    select(-"model",-"scenario") %>%
+    select(-"model", -"scenario") %>%
     spread(.data[["unit"]], .data[["value"]]) %>%
     mutate(value = .data[["ue"]] / .data[["fe"]]) %>%
-    select(-"fe",-"ue")
+    select(-"fe", -"ue")
 
   # Filter out unrealistic Efficiencies
-  data <- filter(data, value > minEfficiency)
+  data <- filter(data, .data[["value"]] > minEfficiency)
 
   vars <- data %>%
     group_by(.data[["variable"]]) %>%
@@ -138,16 +137,16 @@ calcEfficiencyRegression <- function() {
 
   # Trim Dataframe
   parsFull <- parsFull %>%
-    separate("variable", c("enduse","carrier"), sep="\\.") %>%
+    separate("variable", c("enduse", "carrier"), sep = "\\.") %>%
     mutate(region = "GLO") %>%
-    select("region","carrier","enduse","Asym","R0","lrc")
+    select("region", "carrier", "enduse", "Asym", "R0", "lrc")
 
 
   return(list(
     x = as.magpie(parsFull),
     weight = NULL,
     description = "Regression Parameter for FE-UE-Efficiency Projection",
-    unit="a.u."
+    unit = "a.u."
   ))
 
 }

@@ -14,7 +14,7 @@
 #' @author Robin Hasse, Antoine Levesque, Hagen Tockhorn
 #'
 #' @importFrom madrat readSource calcOutput toolCountryFill
-#' @importFrom quitte as.quitte calc_addVariable
+#' @importFrom quitte as.quitte calc_addVariable factor.data.frame
 #' @importFrom dplyr filter mutate select anti_join group_by left_join %>%
 #' ungroup
 #' @importFrom rlang .data
@@ -23,7 +23,6 @@
 #' @export
 
 calcFloorspacePast <- function() {
-
   # FUNCTIONS ------------------------------------------------------------------
 
   # specific floor space from absolute floor space and population
@@ -40,7 +39,7 @@ calcFloorspacePast <- function() {
   # https://doi.org/10.1016/j.energy.2018.01.139
   #
   # The extrapolation is done with the formula:
-  #   Floorspace = alpha * GDPPop^beta * PopDensity^gamma
+  #   Floorspace = alpha * GDPPop^beta * PopDensity^gamma #nolint
   #
   # Another idea would be to re-calibrate the parameters on our disaggregated
   # data and then take the mean, since a general correlation between floorspace
@@ -48,26 +47,25 @@ calcFloorspacePast <- function() {
 
   # extrapolate missing entries with GDP/Cap and Population Density
   extrapolate <- function(df, gdppop, dens, vars) {
-
     # Clean DFs
-    G <- gdppop %>%
-      select(-"model",-"scenario",-"variable",-"unit") %>%
+    g <- gdppop %>%
+      select(-"model", -"scenario", -"variable", -"unit") %>%
       rename(gdppop = "value")
 
-    D <- dens %>%
-      select(-"model",-"scenario",-"variable",-"unit",-"data") %>%
+    d <- dens %>%
+      select(-"model", -"scenario", -"variable", -"unit", -"data") %>%
       rename(density = "value")
 
     # Join DFs
     data <- df %>%
-      factor.data.frame() %>%
-      interpolate_missing_periods(period = seq(1990,2020)) %>%
+      quitte::factor.data.frame() %>%
+      interpolate_missing_periods(period = seq(1990, 2020)) %>%
       as.magpie() %>%
       toolCountryFill() %>%
       as.quitte() %>%
       droplevels() %>%
-      left_join(G, by=c("region","period")) %>%
-      left_join(D, by=c("region","period"))
+      left_join(g, by = c("region", "period")) %>%
+      left_join(d, by = c("region", "period"))
 
 
     # Extrapolate Values
@@ -129,7 +127,7 @@ calcFloorspacePast <- function() {
 
   # population density
   dens <- calcOutput("Density", aggregate = FALSE) %>%
-    as.quitte
+    as.quitte()
 
   # compute specific floor space
   eea <- floorPerCap(eea, pop)

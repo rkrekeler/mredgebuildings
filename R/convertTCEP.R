@@ -1,5 +1,7 @@
 #' Convert TCEP data base
 #'
+#' @param x MAgPIE object with data from TCEP #nolint
+#'
 #' @returns magpie object
 #'
 #' @author Hagen Tockhorn
@@ -13,17 +15,16 @@
 
 
 convertTCEP <- function(x) {
-
   # READ-IN DATA ---------------------------------------------------------------
 
   data <- x
 
 
   # Load Enduse Mapping (EU -> EDGE)
-  euMap <- toolGetMapping("enduse_regional_correspondances.csv", type="regional")
+  euMap <- toolGetMapping("enduse_regional_correspondances.csv", type = "regional")
 
   # Load EDGE Mapping (EDGE -> ISO)
-  edgeMap <- toolGetMapping("regionmappingEDGE.csv", type="regional")
+  edgeMap <- toolGetMapping("regionmappingEDGE.csv", type = "regional")
 
 
   # Population
@@ -55,28 +56,28 @@ convertTCEP <- function(x) {
   popEDGE <- pop %>%
     select("region", "period", "variable", "unit", "value") %>%
     aggregate_map(
-      mapping = edgeMap[,c("CountryCode","RegionCode")],
+      mapping = edgeMap[, c("CountryCode", "RegionCode")],
       by = c("region" = "CountryCode"))
 
 
   # Disaggregate to ISO Level (Enduse -> EDGE -> ISO)
   data <- data %>%
-    mutate(region = gsub("_", "\\.", region)) %>%
+    mutate(region = gsub("_", "\\.", .data[["region"]])) %>%
     aggregate_map(
-      mapping = euMap[,c("region_evolution", "region_target")],
+      mapping = euMap[, c("region_evolution", "region_target")],
       by = c("region" = "region_evolution"),
       weights = popEDGE %>%
-        select(-"unit",-"variable") %>%
+        select(-"unit", -"variable") %>%
         rename(weight = "value"),
       weight_item_col = "region",
       weight_val_col = "weight",
       forceAggregation = TRUE
     ) %>%
     aggregate_map(
-      mapping = edgeMap[,c("RegionCode","CountryCode")],
+      mapping = edgeMap[, c("RegionCode", "CountryCode")],
       by = c("region" = "RegionCode"),
       weights = pop %>%
-        select(-"unit",-"variable", -"model", -"scenario") %>%
+        select(-"unit", -"variable", -"model", -"scenario") %>%
         rename(weight = "value"),
       weight_item_col = "region",
       weight_val_col = "weight",

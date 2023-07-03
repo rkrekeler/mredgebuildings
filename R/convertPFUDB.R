@@ -2,6 +2,8 @@
 #'
 #' This was adapted from EDGE function 'getPFUDB.R'.
 #'
+#' @param x MAgPIE object with data from PFUDB #nolint
+#'
 #' @returns magpie object
 #'
 #' @author Hagen Tockhorn
@@ -16,29 +18,27 @@
 
 
 convertPFUDB <- function(x) {
-
-
   # READ-IN DATA ---------------------------------------------------------------
 
   data <- x
 
   # Get Weights
-  iea_fe <- calcOutput("IEAPFU", aggregate=FALSE) %>%
+  ieaFe <- calcOutput("IEAPFU", aggregate = FALSE) %>%
     as.quitte()
 
   # Get Mapping
-  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type="regional")
+  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type = "regional")
 
   # Get GDP per Cap
-  df_gdppop <- calcOutput("GDPPop", aggregate=FALSE) %>%
+  dfGDPpop <- calcOutput("GDPPop", aggregate = FALSE) %>%
     as.quitte() %>%
-    select(-"model",-"scenario",-"unit")
+    select(-"model", -"scenario", -"unit")
 
 
   # PARAMETERS -----------------------------------------------------------------
 
   # Energy Unit Conversion [TJ -> EJ]
-  TJ2EJ <- 1e-6
+  TJ2EJ <- 1e-6 #nolint
 
 
   # PROCESS DATA ---------------------------------------------------------------
@@ -54,12 +54,12 @@ convertPFUDB <- function(x) {
   # Match Periods
   pfu <- data %>%
     as.quitte() %>%
-    filter(period %in% getPeriods(iea_fe)) %>%
+    filter(.data[["period"]] %in% getPeriods(ieaFe)) %>%
     mutate(value = replace_na(.data[["value"]], 0))
 
-  iea_fe <- iea_fe %>%
+  ieaFe <- ieaFe %>%
     as.quitte() %>%
-    filter(period %in% getPeriods(pfu)) %>%
+    filter(.data[["period"]] %in% getPeriods(pfu)) %>%
     mutate(value = replace_na(.data[["value"]], 0))
 
 
@@ -82,10 +82,10 @@ convertPFUDB <- function(x) {
 
   # Disaggregate to ISO Level
   pfu <- pfu %>%
-    droplevels()%>%
+    droplevels() %>%
     aggregate_map(
       subset2agg = levels(pfu$variable),
-      weights = iea_fe %>%
+      weights = ieaFe %>%
         rename(weight = "value") %>%
         select(-"model", -"scenario", -"unit") %>%
         droplevels(),
@@ -94,15 +94,15 @@ convertPFUDB <- function(x) {
       weight_item_col = "region",
       weight_val_col = "weight") %>%
     mutate(value = replace_na(.data[["value"]], 0)) %>%
-    toolSplitBiomass(df_gdppop, varName = "Biomass")
+    toolSplitBiomass(dfGDPpop, varName = "Biomass")
 
 
     # Adaptation of correct Format
     pfu <- pfu %>%
-      mutate(value = .data[['value']] * TJ2EJ) %>%
+      mutate(value = .data[["value"]] * TJ2EJ) %>%
       rename(carrier = "variable",
              enduse = "use") %>%
-      select(c("region","period","carrier","enduse","unit","value"))
+      select(c("region", "period", "carrier", "enduse", "unit", "value"))
 
 
     # OUTPUT -------------------------------------------------------------------

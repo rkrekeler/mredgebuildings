@@ -26,7 +26,6 @@
 #' @export
 
 calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier")) {
-
   # FUNCTIONS ------------------------------------------------------------------
 
   # Calculate Shares w.r.t colShare
@@ -45,9 +44,9 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"))
                    readSource("Odyssee", "services"))
 
   # Get GDP per Cap
-  gdppop <- calcOutput("GDPPop", aggregate=FALSE) %>%
+  gdppop <- calcOutput("GDPPop", aggregate = FALSE) %>%
     as.quitte() %>%
-    select(-"model",-"scenario",-"unit")
+    select(-"model", -"scenario", -"unit")
 
 
   # PARAMETERS -----------------------------------------------------------------

@@ -18,15 +18,15 @@ toolDisaggregate(
 \item{data}{data.frame containing data on carrier-specific energy consumption.
 Columns 'carrier' and 'value' are required.}
 
-\item{sharesEU}{data.frame containing aggregated enduse shares}
+\item{sharesEU}{data.frame containing enduse shares}
+
+\item{etpEU}{data.frame containing enduse energy data}
 
 \item{exclude}{list containing "enduse-carrier" pairs to be excluded}
 
 \item{sharesReplace}{data.frame containing existing disaggregated carrier-enduse shares}
 
 \item{correct}{boolean that determines whether values shall be corrected for}
-
-\item{sharesEC}{data.frame containing aggregated carrier shares}
 }
 \description{
 Disaggregates Enduse and Carrier Shares into combined enduse-carrier shares

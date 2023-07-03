@@ -8,7 +8,6 @@
 
 
 calcDensity <- function() {
-
   # READ-IN DATA----------------------------------------------------------------
 
   pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
@@ -28,22 +27,22 @@ calcDensity <- function() {
 
   # Clean DFs
   pop <- pop %>%
-    select(-"model",-"scenario",-"unit",-"variable") %>%
-    mutate(value := .data[["value"]] * million2unit) %>%
+    select(-"model", -"scenario", -"unit", -"variable") %>%
+    mutate(value = .data[["value"]] * million2unit) %>%
     rename(population = "value")
 
   surf <- surf %>%
-    select(-"model",-"scenario",-"unit",-"variable",-"period") %>%
+    select(-"model", -"scenario", -"unit", -"variable", -"period") %>%
     rename(surface = "value")
 
   # Calculate Density
-  dens <- left_join(pop,surf, by="region") %>%
+  dens <- left_join(pop, surf, by = "region") %>%
     mutate(value = .data[["population"]] / (.data[["surface"]] * 1e3)) %>%
     select(-"population", -"surface")
 
 
   # Fill inf values with global density average
-  avgDens <- mean(dens[!is.infinite(dens$value),]$value)
+  avgDens <- mean(dens[!is.infinite(dens$value), ]$value)
 
   dens <- dens %>%
     mutate(value = ifelse(is.infinite(.data[["value"]]),

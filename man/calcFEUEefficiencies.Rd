@@ -4,10 +4,10 @@
 \alias{calcFEUEefficiencies}
 \title{Calculation and Projection of Final to Useful Energy}
 \usage{
-calcFEUEefficiencies(GasBioEquality = TRUE)
+calcFEUEefficiencies(gasBioEquality = TRUE)
 }
 \arguments{
-\item{GasBioEquality}{Determines if Natgas and Biomod share the same efficiencies}
+\item{gasBioEquality}{Determines if Natgas and Biomod share the same efficiencies}
 }
 \description{
 Calculate Efficiencies of Final (FE) to Useful (UE) Energy Conversion for all

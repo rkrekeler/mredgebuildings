@@ -7,7 +7,7 @@
 #' assumed efficiency levels. The parameters of that curve are derived by a
 #' regression with observations of IEA data.
 #'
-#' @param GasBioEquality Determines if Natgas and Biomod share the same efficiencies
+#' @param gasBioEquality Determines if Natgas and Biomod share the same efficiencies
 #'
 #' @references De Stercke, S. (2014). Dynamics of Energy Systems: A Useful
 #' Perspective (Interim Report, p. 68). IIASA.
@@ -15,11 +15,12 @@
 #'
 #' @author Hagen Tockhorn
 #'
+#' @importFrom stats SSasymp
+#'
 #' @export
 
 
-calcFEUEefficiencies <- function(GasBioEquality = TRUE) {
-
+calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
   # READ-IN DATA ---------------------------------------------------------------
 
   pfu <- calcOutput("PFUDB", aggregate = FALSE) %>%
@@ -42,12 +43,12 @@ calcFEUEefficiencies <- function(GasBioEquality = TRUE) {
 
   # Combine with GDP per Cap for Period 1990-2020
   data <- pfu %>%
-    interpolate_missing_periods(period = seq(1990,2020)) %>%
+    interpolate_missing_periods(period = seq(1990, 2020)) %>%
     mutate(value = ifelse(is.na(.data[["value"]]), 0, .data[["value"]])) %>%
     left_join(gdppop %>%
-                select(-"model",-"scenario",-"unit",-"variable") %>%
+                select(-"model", -"scenario", -"unit", -"variable") %>%
                 rename(gdppop = "value"),
-              by = c("region","period")) %>%
+              by = c("region", "period")) %>%
     select(-"model", -"scenario", -"variable")
 
 
@@ -66,8 +67,8 @@ calcFEUEefficiencies <- function(GasBioEquality = TRUE) {
            "space_cooling.elec" = gsub("\\,", "\\.", .data[["space_cooling.elec"]]),
            "space_cooling.elec" = as.numeric(.data[["space_cooling.elec"]])) %>%
     gather(key = "variable", value = "value", "space_cooling.elec", "water_heating.elec", "space_heating.elec") %>%
-    spread(key="parameter", value="value") %>%
-    separate(col = "variable", into = c("enduse","carrier"), sep = "\\.") %>%
+    spread(key = "parameter", value = "value") %>%
+    separate(col = "variable", into = c("enduse", "carrier"), sep = "\\.") %>%
     select(-"phi3") %>%
     rename(AsymCorr = "Asym", lrcCorr = "lrc", R0Corr = "R0")
 
@@ -96,7 +97,7 @@ calcFEUEefficiencies <- function(GasBioEquality = TRUE) {
     group_by(across(all_of(c("carrier", "enduse")))) %>%
     mutate(pred = SSasymp(.data[["gdppop"]], .data[["Asym"]], .data[["R0"]], .data[["lrc"]])) %>%
     ungroup() %>%
-    select(-"Asym",-"R0",-"lrc", -"fe", -"ue")
+    select(-"Asym", -"R0", -"lrc", -"fe", -"ue")
 
 
   #--- Match Region-Specific Curves to fill non-existing Data Points
@@ -112,7 +113,7 @@ calcFEUEefficiencies <- function(GasBioEquality = TRUE) {
   #       will be filled-up w/ non-corrected efficiency projections.
 
   dataHist <- dataHist %>%
-    left_join(corrFactors, by = c("region","period","enduse","carrier")) %>%
+    left_join(corrFactors, by = c("region", "period", "enduse", "carrier")) %>%
     mutate(value = ifelse(is.na(.data[["factor"]]),
                           .data[["pred"]],
                           ifelse(is.na(.data[["efficiency"]]),
@@ -128,7 +129,7 @@ calcFEUEefficiencies <- function(GasBioEquality = TRUE) {
   #--- Corrections
 
   # Biomod Efficiency identical to Natgas
-  if (GasBioEquality) {
+  if (gasBioEquality) {
     gasEffs <- efficiencies %>%
       unite("variable", "enduse", "carrier", sep = ".") %>%
       filter(.data[["variable"]] %in% names(eqEffs))
@@ -137,7 +138,7 @@ calcFEUEefficiencies <- function(GasBioEquality = TRUE) {
       bioEffs <- gasEffs %>%
         filter(.data[["variable"]] == gasVar) %>%
         mutate(variable = eqEffs[gasVar][[1]]) %>%
-        separate("variable", into = c("enduse","carrier"), sep = "\\.")
+        separate("variable", into = c("enduse", "carrier"), sep = "\\.")
 
       efficiencies <- rbind(efficiencies, bioEffs)
     }

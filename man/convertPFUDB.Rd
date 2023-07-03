@@ -6,6 +6,9 @@
 \usage{
 convertPFUDB(x)
 }
+\arguments{
+\item{x}{MAgPIE object with data from PFUDB #nolint}
+}
 \value{
 magpie object
 }

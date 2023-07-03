@@ -9,7 +9,6 @@
 
 
 calcFEUE <- function() {
-
   # FUNCTIONS ------------------------------------------------------------------
 
   # Aggregate to Enduse-Level
@@ -40,8 +39,8 @@ calcFEUE <- function() {
   # PROCESS DATA ---------------------------------------------------------------
 
   ue <- fe %>%
-    sumDF(c("appliances","lightning"), "appliances_light") %>%
-    spread("unit","value") %>%
+    sumDF(c("appliances", "lightning"), "appliances_light") %>%
+    spread("unit", "value") %>%
     left_join(efficiencies,
               by = c("model", "scenario", "region", "variable",
                      "period", "carrier", "enduse")) %>%

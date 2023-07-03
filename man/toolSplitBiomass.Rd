@@ -4,12 +4,12 @@
 \alias{toolSplitBiomass}
 \title{Splits Biomass according to GDP per Capita}
 \usage{
-toolSplitBiomass(df, df_gdppop, min = 10000, max = 15000, varName = "biomass")
+toolSplitBiomass(df, dfGDPpop, min = 10000, max = 15000, varName = "biomass")
 }
 \arguments{
 \item{df}{dataframe with carrier as 'variable'}
 
-\item{df_gdppop}{dataframe containing the GDP per Capita}
+\item{dfGDPpop}{dataframe containing the GDP per Capita}
 
 \item{min}{lower threshold of GDP per Capita in USD 2005}
 
@@ -26,7 +26,7 @@ This is adapted from EDGE-B Function "splitBiomass.R" by Antoine Levesque.
 \details{
 Any value belonging to the carrier defined by "varName" will be split into
 the default carrier names "biomod" and "biotrad" according to weights given
-by "df_gdppop".
+by "dfGDPpop".
 }
 \author{
 Hagen Tockhorn

@@ -25,7 +25,6 @@
 #' @export
 
 calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
-
   # FUNCTIONS ------------------------------------------------------------------
 
   # Calculate Shares
@@ -43,9 +42,9 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
   etp <- readSource("IEA_ETP", "buildings")
 
   # Get GDP per Cap
-  gdppop <- calcOutput("GDPPop", aggregate=FALSE) %>%
+  gdppop <- calcOutput("GDPPop", aggregate = FALSE) %>%
     as.quitte() %>%
-    select(-"model",-"scenario",-"unit")
+    select(-"model", -"scenario", -"unit")
 
 
   # PARAMETERS -----------------------------------------------------------------
@@ -60,7 +59,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
   scen <- c("RTS")
 
   # Convert Unit to EJ
-  PJ2EJ <- 1e-3
+  PJ2EJ <- 1e-3   #nolint
 
 
   # Variable Mappings
@@ -71,7 +70,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
       `Buildings|Buildings - Total final energy consumption by end-use|Space cooling` = "space_cooling",
       `Buildings|Buildings - Total final energy consumption by end-use|Lighting` = "lighting",
       `Buildings|Buildings - Total final energy consumption by end-use|Appliances and miscellaneous equipments`
-      = "appliances",
+          = "appliances",
       `Buildings|Buildings - Total final energy consumption by end-use|Cooking` = "cooking"),
 
     carrier = c(
@@ -125,11 +124,9 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
       unit = "EJ",
       description = "FE of carrier or end use in buildings demand in EJ"
     ))
-  }
 
-
-  # Or return shares
-  else {
+  } else {
+    # Or return shares
 
     # Global Shares
     shareGlobal <- etpFilter %>%

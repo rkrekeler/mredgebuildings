@@ -40,8 +40,6 @@
 calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "enduse_nonthermal", "enduse_thermal"),
                        carrierCorrection = FALSE,
                        feOnly = FALSE) {
-
-
   # PARAMETERS -----------------------------------------------------------------
   subtype <- match.arg(subtype)
 
@@ -73,11 +71,37 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
     unite("regex", all_of(c("region", "enduse", "carrier")), sep = "\\.")
 
 
+  # Enduse-Carrier combinations which will be systematically excluded
+  exclude <- c("appliances-natgas",
+               "appliances-petrol",
+               "appliances-biomod",
+               "appliances-biotrad",
+               "appliances-coal",
+               "appliances-heat",
+               "refrigerators-natgas",
+               "refrigerators-petrol",
+               "refrigerators-biomod",
+               "refrigerators-biotrad",
+               "refrigerators-coal",
+               "refrigerators-heat",
+               "lighting-biomod",
+               "lighting-biotrad",
+               "lighting-coal",
+               "lighting-heat",
+               "cooking-heat",
+               "space_cooling-heat",
+               "space_cooling-biomod",
+               "space_cooling-biotrad",
+               "space_cooling-coal",
+               "space_cooling-natgas",
+               "space_cooling-petrol")
+
+
   # Percentage of Appliances for Refrigerators
   fridgeShare <- rbind(
     data.frame(RegionCode = "USA", share  = 0.12),
     data.frame(RegionCode = c("EUR", "OCD", "RUS", "JPN"), share = 0.17),
-    data.frame(RegionCode = c("CHN", "IND", "NCD", "AFR", "MIE","OAS"), share = 0.3))
+    data.frame(RegionCode = c("CHN", "IND", "NCD", "AFR", "MIE", "OAS"), share = 0.3))
 
 
 
@@ -97,11 +121,10 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
     as.quitte()
 
   if (shareOf == "enduse") {
-    if (feOnly){
+    if (feOnly) {
       dataTCEP <- readSource("TCEP") %>%
         as.quitte()
-    }
-    else{
+    } else {
       sharesTCEP <- calcOutput("ShareTCEP", aggregate = FALSE) %>%
         as.quitte()
     }
@@ -109,7 +132,7 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
 
 
   # EDGE mapping
-  edgeMap <- toolGetMapping("regionmappingEDGE.csv", type="regional")
+  edgeMap <- toolGetMapping("regionmappingEDGE.csv", type = "regional")
 
   # ETP mapping
   regmapping <- toolGetMapping("regionmappingIEA_ETP.csv", where = "mappingfolder", type = "regional")
@@ -128,13 +151,13 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
 
   addThermal <- function(df, mapping, fridgeShare) {
     df <- df %>%
-      filter(enduse != "lighting") %>%
+      filter(.data[["enduse"]] != "lighting") %>%
       left_join(edgeMap %>%
                   select(-"RegionCodeEUR", -"RegionCodeEUR_ETP", -"X") %>%
                   rename(region = "CountryCode") %>%
-                  left_join(fridgeShare, by="RegionCode") %>%
+                  left_join(fridgeShare, by = "RegionCode") %>%
                   select(-"RegionCode"),
-                by = "region")%>%
+                by = "region") %>%
       mutate(value = ifelse(.data[["enduse"]] != "appliances",
                             .data[["value"]],
                             .data[["value"]] * .data[["share"]]),
@@ -268,10 +291,7 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
                               .data[["value.y"]],
                               .data[["value.x"]])) %>%
         select(-"value.x", -"value.y")
-    }
-
-    else {
-
+    } else {
       # Extrapolate ETP FE Data
       evolutionFactor <- dataTCEP %>%
         left_join(regmapping %>%
@@ -333,7 +353,6 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
 
   #---Carrier Resolution needs special Attention
   if (shareOf == "carrier") {
-
     # Merge Data
     data <- sharesOdyssee %>%
       select(-"unit", -"variable", -"model", -"scenario") %>%
@@ -387,7 +406,7 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
       data <- data %>%
         unite(col = "EUEC", .data[["enduse"]], .data[["carrier"]], sep = "-", remove = FALSE) %>%
         # anti_join(data.frame("EUEC" = c(exclude, excludeNEW)), by = "EUEC") %>%
-        mutate(value = ifelse(.data[["EUEC"]] %in% c(exclude,excludeNEW),
+        mutate(value = ifelse(.data[["EUEC"]] %in% exclude,
                               0,
                               .data[["value"]])) %>%
         select(-"EUEC")
@@ -479,8 +498,7 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
                 unit = "EJ",
                 min = 0,
                 description = "Energy of carrier or end use in buildings demand"))
-  }
-  else {
+  } else {
     return(list(x = data,
                 weight = NULL,
                 unit = "1",

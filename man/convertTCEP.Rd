@@ -6,6 +6,9 @@
 \usage{
 convertTCEP(x)
 }
+\arguments{
+\item{x}{MAgPIE object with data from TCEP #nolint}
+}
 \value{
 magpie object
 }
