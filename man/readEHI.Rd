@@ -3,9 +3,6 @@
 \name{readEHI}
 \alias{readEHI}
 \title{Read EHI Heating Market Report}
-\source{
-https://www.eurobserv-er.org/
-}
 \usage{
 readEHI(subtype)
 }
@@ -16,14 +13,7 @@ readEHI(subtype)
 magpie object
 }
 \description{
-PDF market reports on Renewables in Europe
-}
-\note{
-I download the report and snip a png of the table. Then I extract the
-data with \href{https://extracttable.com/}{this online tool} and save it as a
-tabular csv in the source folder. The Tool is not fully reliable. This
-function throws an error if values don't sum up. You then have to correct the
-csv file manually.
+Read EHI Heating Market Report
 }
 \author{
 Robin Hasse
