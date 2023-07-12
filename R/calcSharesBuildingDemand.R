@@ -37,9 +37,9 @@ calcSharesBuildingDemand <- function(subtype = c("enduse", "carrier")) {
     as.quitte() %>%
     filter(!is.na(.data[["value"]]))
   urbanshare <- calcOutput("UrbanPast", aggregate = FALSE)
-  etpEurRegions <- toolGetMapping("regionmappingEDGE.csv", "regional")
+  etpEurRegions <- toolGetMapping("regionmappingEDGE.csv", "regional", where = "mappingfolder")
   regionalCorrespondence <- toolGetMapping("regionalCorrespondenceEDGECarrier.csv",
-                                           "sectoral")  %>%
+                                           "sectoral", where = "mappingfolder")  %>%
     gather("enduse", "fillRegion", -"region") %>%
     rename(etpRegion = "region")
 
