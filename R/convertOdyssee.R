@@ -33,7 +33,8 @@ convertOdyssee <- function(x, subtype = "households") {
     "Mm2;      m2;       1E6",
     "%;        1;        1E-2",
     "degree;   dK/yr;    1",
-    "MEUR2010; MEUR2010; 1"
+    "MEUR2010; MEUR2010; 1",
+    "MEUR2015; MEUR2015; 1"
   )
   data <- toolUnitConversion(data, unitConversion)
 
@@ -43,7 +44,8 @@ convertOdyssee <- function(x, subtype = "households") {
   # manually drop erroneous data points
   if (subtype == "households") {
     data["HUN", , c("surlpn_m2", "surmpn_m2", "suripn_m2")] <- NA
-    data["PRT", , c("nbrlprpet_1", "nbrlprgaz_1", "nbrlprcms_1", "nbrlprvap_1", "nbrlprboi_1", "nbrlprele_1")] <- NA
+    data["PRT", , c("nbrlprpet_1", "nbrlprgaz_1", "nbrlprcms_1", "nbrlprvap_1",
+                    "nbrlprboi_1", "nbrlprele_1")] <- NA
   }
   return(data)
 }
