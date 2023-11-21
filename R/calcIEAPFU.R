@@ -23,8 +23,8 @@ calcIEAPFU <- function() {
 
   mapping <- toolGetMapping(type = "sectoral",
                             name = "structuremappingFE_PFU.csv",
-                            returnPathOnly = TRUE,
-                            where = "mappingfolder") %>%
+                            where = "mredgebuildings",
+                            returnPathOnly = TRUE) %>%
     read.csv2(stringsAsFactors = FALSE, na.strings = "") %>%
     select("iea_product", "iea_flows", "pfu") %>%
     na.omit()
