@@ -13,6 +13,8 @@
 #' @author Robin Hasse, Antoine Levesque, Hagen Tockhorn
 #'
 #' @param subtype Character, dimension names, level of shares.
+#' @param feOnly if TRUE, output is absolute FE values
+#'
 #' @returns MAgPIE object with historic shares
 #'
 #' @importFrom magclass mbind as.magpie
@@ -25,7 +27,8 @@
 #' @importFrom utils tail
 #' @export
 
-calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier")) {
+calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
+                             feOnly = FALSE) {
   # FUNCTIONS ------------------------------------------------------------------
 
   # Calculate Shares w.r.t colShare
@@ -102,58 +105,72 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"))
       rename(carrier = "variable")
   }
 
+  if (feOnly) {
+    # aggregate residential and services sector
+    odyssee <- odyssee %>%
+      group_by(across(all_of(c("region", "period", "carrier", "enduse")))) %>%
+      summarise(value = sum(.data[["value"]])) %>%
+      as.magpie() %>%
+      toolCountryFill(verbosity = 2)
 
-  #---Calculate Shares
+    return(list(x = odyssee,
+                unit = "FE",
+                description = "Aggregated fe values for Odyssee regions"))
+  }
 
-  shareGlobal <- odyssee %>%
-    group_by(across(all_of(shareOf))) %>%
-    summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
-    ungroup() %>%
-    mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE))
+  else {
+    #---Calculate Shares
 
-  share <- odyssee %>%
-    group_by(across(all_of(c("region", "period", shareOf)))) %>%
-    summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
-    ungroup() %>%
-    calcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1)) %>%
-    mutate(value = replace_na(.data[["value"]], 0)) %>%
-    complete(!!!syms(c("region", "period", shareOf))) %>%
-    left_join(shareGlobal, by = shareOf) %>%
-    mutate(value = ifelse(is.na(.data[["value.x"]]),
-                          .data[["value.y"]],
-                          .data[["value.x"]])) %>%
-    select(-"value.x", -"value.y") %>%
-    calcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1))
+    shareGlobal <- odyssee %>%
+      group_by(across(all_of(shareOf))) %>%
+      summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
+      ungroup() %>%
+      mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE))
 
-
-  # Weights: regional share of final energy
-  regShare <- odyssee %>%
-    complete(!!!syms(c("region", "period", "sector", "carrier", "enduse"))) %>%
-    interpolate_missing_periods(expand.values = TRUE) %>%
-    group_by(across(all_of(c("region", "period", head(shareOf, -1))))) %>%
-    summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
-    group_by(across(all_of(c("period", head(shareOf, -1))))) %>%
-    mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE))
-
-
-
-  # OUTPUT ---------------------------------------------------------------------
-
-  # Convert to magpie object
-  share <- share %>%
-    as.magpie() %>%
-    toolCountryFill(verbosity = 2)
-
-  regShare <- regShare %>%
-    as.magpie() %>%
-    collapseDim() %>%
-    toolCountryFill(1, verbosity = 2)
+    share <- odyssee %>%
+      group_by(across(all_of(c("region", "period", shareOf)))) %>%
+      summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
+      ungroup() %>%
+      calcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1)) %>%
+      mutate(value = replace_na(.data[["value"]], 0)) %>%
+      complete(!!!syms(c("region", "period", shareOf))) %>%
+      left_join(shareGlobal, by = shareOf) %>%
+      mutate(value = ifelse(is.na(.data[["value.x"]]),
+                            .data[["value.y"]],
+                            .data[["value.x"]])) %>%
+      select(-"value.x", -"value.y") %>%
+      calcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1))
 
 
-  return(list(x = share,
-              weight = regShare,
-              unit = "1",
-              min = 0,
-              max = 1,
-              description = "Share of carrier or end use in buildings demand"))
+    # Weights: regional share of final energy
+    regShare <- odyssee %>%
+      complete(!!!syms(c("region", "period", "sector", "carrier", "enduse"))) %>%
+      interpolate_missing_periods(expand.values = TRUE) %>%
+      group_by(across(all_of(c("region", "period", head(shareOf, -1))))) %>%
+      summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
+      group_by(across(all_of(c("period", head(shareOf, -1))))) %>%
+      mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE))
+
+
+
+    # OUTPUT ---------------------------------------------------------------------
+
+    # Convert to magpie object
+    share <- share %>%
+      as.magpie() %>%
+      toolCountryFill(verbosity = 2)
+
+    regShare <- regShare %>%
+      as.magpie() %>%
+      collapseDim() %>%
+      toolCountryFill(1, verbosity = 2)
+
+
+    return(list(x = share,
+                weight = regShare,
+                unit = "1",
+                min = 0,
+                max = 1,
+                description = "Share of carrier or end use in buildings demand"))
+  }
 }

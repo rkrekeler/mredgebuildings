@@ -38,6 +38,8 @@ calcFEUE <- function() {
 
   # PROCESS DATA ---------------------------------------------------------------
 
+  efficiencies <- rename(efficiencies, efficiency = "value")
+
   ue <- fe %>%
     sumDF(c("appliances", "lightning"), "appliances_light") %>%
     spread("unit", "value") %>%
@@ -50,6 +52,10 @@ calcFEUE <- function() {
 
 
   # OUTPUT ---------------------------------------------------------------------
+
+  ue <- ue %>%
+    as.quitte() %>%
+    as.magpie()
 
   return(list(
     x = ue,

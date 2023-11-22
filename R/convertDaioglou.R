@@ -38,7 +38,7 @@ convertDaioglou <- function(x, subtype = "households.specific floor space") {
     sourceUN <- unique(grep("UN habitat", data[["source"]], value = TRUE))
     countryUN <- data %>%
       filter(.data[["source"]] %in% sourceUN) %>%
-      getElement(.data[["region"]]) %>%
+      getElement("region") %>%
       unique()
     countryUNplus <- data %>%
       filter(.data[["region"]] %in% countryUN,

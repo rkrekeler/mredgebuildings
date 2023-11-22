@@ -49,22 +49,12 @@ calcPFUDB <- function() {
   )
 
   # Enduse-Carrier combinations which will be systematically excluded
-  exclude <- c("appliances-natgas",
-               "appliances-petrol",
-               "appliances-biomod",
-               "appliances-biotrad",
-               "appliances-coal",
-               "appliances-heat",
-               "refrigerators-natgas",
+  exclude <- c("refrigerators-natgas",
                "refrigerators-petrol",
                "refrigerators-biomod",
                "refrigerators-biotrad",
                "refrigerators-coal",
                "refrigerators-heat",
-               "lighting-biomod",
-               "lighting-biotrad",
-               "lighting-coal",
-               "lighting-heat",
                "cooking-heat",
                "space_cooling-heat",
                "space_cooling-biomod",
@@ -72,6 +62,9 @@ calcPFUDB <- function() {
                "space_cooling-coal",
                "space_cooling-natgas",
                "space_cooling-petrol")
+
+  # fridge share of Europe (see calcShares)
+  fridgeShare <- 0.17
 
 
 
@@ -94,10 +87,11 @@ calcPFUDB <- function() {
                       aggregate = FALSE) %>%
               as.quitte()
 
-  sharesOdyssee <- calcOutput("ShareOdyssee",
-                              subtype = "enduse_carrier",
-                              aggregate = FALSE) %>%
-              as.quitte()
+  feOdyssee <- calcOutput("ShareOdyssee",
+                          subtype = "enduse_carrier",
+                          feOnly = TRUE,
+                          aggregate = FALSE) %>%
+    as.quitte()
 
 
   # ETP mapping
@@ -139,10 +133,19 @@ calcPFUDB <- function() {
                   forceAggregation = TRUE)
 
 
-  # Prepare toolDisaggregate Input
+  #--- Prepare toolDisaggregate Input
 
-  sharesOdyssee <- sharesOdyssee %>%
-    select("region", "period", "carrier", "enduse", "value")
+  # note: hardcoded the fridge share so that the fe data becomes compliant with
+  # the remaining input (can be done more nicely)
+  feOdyssee <- feOdyssee %>%
+    select("region", "period", "carrier", "enduse", "value") %>%
+    filter(.data[["enduse"]] != "lighting") %>%
+    mutate(value = ifelse(.data[["enduse"]] != "appliances",
+                          .data[["value"]],
+                          .data[["value"]] * fridgeShare),
+           enduse = ifelse(.data[["enduse"]] == "appliances",
+                           "refrigerators",
+                           as.character(.data[["enduse"]])))
 
   regmapping <- regmapping %>%
     mutate(EEAReg = ifelse(.data[["EEAReg"]] == "rest",
@@ -161,7 +164,10 @@ calcPFUDB <- function() {
     filter(.data[["enduse"]] == "Low-T heat") %>%
     select(-"enduse") %>%
     rename(variable = "carrier") %>%
-    toolDisaggregate(sharesEU, etpEU, exclude = exclude, sharesReplace = sharesOdyssee) %>%
+    toolDisaggregate(sharesEU,
+                     etpEU,
+                     exclude = exclude,
+                     dataReplace = feOdyssee) %>%
     select(colnames(pfuNonTherm))
 
 

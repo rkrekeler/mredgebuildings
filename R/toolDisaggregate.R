@@ -6,7 +6,7 @@
 #' @param sharesEU data.frame containing enduse shares
 #' @param etpEU data.frame containing enduse energy data
 #' @param exclude list containing "enduse-carrier" pairs to be excluded
-#' @param sharesReplace data.frame containing existing disaggregated carrier-enduse shares
+#' @param dataReplace data.frame containing existing disaggregated carrier-enduse shares
 #' @param correct boolean that determines whether values shall be corrected for
 #'
 #' @author Hagen Tockhorn
@@ -19,8 +19,7 @@ toolDisaggregate <- function(data,
                              sharesEU,
                              etpEU,
                              exclude = NULL,
-                             sharesReplace = NULL,
-                             correct = FALSE) {
+                             dataReplace = NULL) {
   # ==== Explanation
   # Determine the matrix coefficient based on sharesEU and sharesEC,
   # looking for the solution closest to the data estimates.
@@ -68,6 +67,15 @@ toolDisaggregate <- function(data,
 
   # FUNCTIONS ------------------------------------------------------------------
 
+  computeShares <- function(data){
+    group_cols = setdiff(colnames(data), c("value","carrier"))
+    tmp = data %>% group_by(across(all_of(group_cols))) %>%
+      mutate(value = value /sum(value, na.rm = TRUE)) %>%
+      ungroup() %>%
+      rename(shareEC = "value")
+    return(tmp)
+  }
+
   #--- Quadratic Optimization
   sol <- function(a, b, w, nEQ) {
     # nolint start
@@ -106,7 +114,10 @@ toolDisaggregate <- function(data,
     d <- diag(length(w))
 
     # Feed the solver
-    r <- solve.QP(d, w, t(a), b, meq = nEQ)
+    # r <- solve.QP(d, w, t(a), b, meq = nEQ)
+    r <- solve.QP(d, w, t(a), b)
+    # NOTE: This approach works but obviously does not take the equality
+    # constraints into consideration. Needs to be fixed.
 
 
     zFinal <- r$solution
@@ -128,6 +139,7 @@ toolDisaggregate <- function(data,
     #--- params
     #------- reg  : region of consideration
     #------- per  : time period (year) of consideration
+
 
     tmp <- table[table[["regionAgg"]] == reg & table[["period"]] == per, ]
     tmp <- quitte::factor.data.frame(tmp)
@@ -154,7 +166,9 @@ toolDisaggregate <- function(data,
       #---Equality Constraints (A %*% w == x)
 
       # NOTE: only the EC values are taken as equality constraints
-      # (This was supposed to fix the feasibility issues, but didn't.)
+      # This was supposed to fix the feasibility issues, but didn't. For a full
+      # run, it would be wishful to consider all equality constraints, meaning
+      # nEQ <- nEC * Regs + nEU
       nEQ <- nEC * nRegs
 
       numCol <- nrow(tmp)
@@ -184,8 +198,6 @@ toolDisaggregate <- function(data,
         i <- i + 1
       }
 
-
-      print(paste(reg, as.character(per)))
       #---Inequality Constraints (A %*% w >= 0)
       # x <- rbind(x, diag(nrow = numCol, ncol = numCol)) #nolint
       # y <- c(y, replicate(n = numCol, 0))               #nolint
@@ -201,13 +213,14 @@ toolDisaggregate <- function(data,
   }
 
 
+
   # PARAMETERS -----------------------------------------------------------------
 
   # Overlapping Periods w/ input data
   years <- intersect(getPeriods(data), getPeriods(etpEU))
 
   # Replacement Regions
-  replaceRegs <- sharesReplace %>%
+  replaceRegs <- dataReplace %>%
     filter(!is.na(.data[["value"]])) %>%
     select("region") %>%
     unique()
@@ -221,20 +234,22 @@ toolDisaggregate <- function(data,
   etpEU <- etpEU %>% filter(.data[["period"]] %in% years)
   sharesEU <- sharesEU %>% filter(.data[["period"]] %in% years)
 
-
-  # Filter out regions later to be replaced
-  etpEU <- filter(etpEU, !(.data[["region"]] %in% replaceRegs$region))
-  dataDis <- filter(data, !(.data[["region"]] %in% replaceRegs$region))
-  sharesEU <- filter(sharesEU, !(.data[["region"]] %in% replaceRegs$region))
-
-
-  # Prepare Dataset to disaggregate
-  dataDis <- dataDis %>%
+  dataDis <- data %>%
     filter(.data[["unit"]] == "fe") %>%
     select("region", "period", "variable", "value") %>%
     interpolate_missing_periods(expand.values = TRUE) %>%
-    rename(carrier = "variable",
-           dataFE = "value")
+    rename(carrier = "variable")
+
+  ecShares <- computeShares(dataDis) %>%
+    mutate(shareEC = ifelse(.data[["shareEC"]] == 0,
+                            NA,
+                            .data[["shareEC"]]))
+
+
+  # Filter out regions later to be replaced
+  etpEU <- filter(etpEU, !(.data[["region"]] %in% replaceRegs$region))
+  dataDis <- filter(dataDis, !(.data[["region"]] %in% replaceRegs$region))
+  sharesEU <- filter(sharesEU, !(.data[["region"]] %in% replaceRegs$region))
 
 
   # change the name of the value column
@@ -243,10 +258,12 @@ toolDisaggregate <- function(data,
 
 
   tableShares <- dataDis %>%
+    rename(dataFE = "value") %>%
     left_join(etpEU, by = c("region", "period")) %>%
     left_join(sharesEU %>%
                 select("region", "period", "enduse", "shareEU"),
-              by = c("region", "period", "enduse"))
+              by = c("region", "period", "enduse")) %>%
+    mutate(shareEU = replace_na(.data[["shareEU"]], 0))
 
 
   # Exclude unwanted EU-EC Combinations
@@ -255,14 +272,24 @@ toolDisaggregate <- function(data,
         unite(col = "EUEC", .data[["enduse"]], .data[["carrier"]], sep = "-", remove = FALSE) %>%
         anti_join(data.frame("EUEC" = exclude), by = "EUEC") %>%
         select(-"EUEC")
+
+      if (!is.null(dataReplace)) {
+        dataReplace <- dataReplace %>%
+          unite(col = "EUEC", .data[["enduse"]], .data[["carrier"]], sep = "-", remove = FALSE) %>%
+          anti_join(data.frame("EUEC" = exclude), by = "EUEC") %>%
+          select(-"EUEC") %>%
+          group_by(across(all_of(c("region", "period")))) %>%
+          mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE)) %>%
+          ungroup()
+      }
   }
+
 
   # Calculate Shared FE Proportion and Aggregate Enduse Data
   tableShares <- tableShares %>%
     mutate(shareEUEC = .data[["dataFE"]] * .data[["shareEU"]]) %>%
     group_by(across(all_of(c("period", "EEAReg", "enduse")))) %>%
     mutate(etpEU = sum(unique(.data[["etpEU"]]), na.rm = TRUE)) %>%
-    # mutate(etpEU = sum(unique(.data[["shareEUEC"]]), na.rm = TRUE)) %>%
     ungroup() %>%
     rename(regionAgg = "EEAReg") %>%
     select(-"shareEU")
@@ -285,67 +312,43 @@ toolDisaggregate <- function(data,
                    ))
 
 
-
   # Replace with existing Shares and re-normalize due to excluded EUEC
-  if (!is.null(sharesReplace)) {
+  if (!is.null(dataReplace)) {
+    dataReplace <- dataReplace %>%
+      select("region", "period", "carrier", "enduse", "value") %>%
+      rename(shareEUEC = "value") %>%
+      na.omit(cols = "shareEUEC")
+
     table <- table %>%
-      left_join(sharesReplace, by = c("region", "period", "enduse", "carrier")) %>%
-      mutate(shareEUEC = ifelse(is.na(.data[["value"]]),
-                                .data[["shareEUEC"]],
-                                .data[["value"]])) %>%
-      select("region", "period", "carrier", "enduse", "shareEC", "shareEU", "shareEUEC") %>%
+      select("region", "period", "carrier", "enduse", "shareEUEC") %>%
+      rbind(dataReplace) %>%
       group_by(across(all_of(c("region", "period")))) %>%
       mutate(shareEUEC = .data[["shareEUEC"]] / sum(.data[["shareEUEC"]], na.rm = TRUE)) %>%
       ungroup()
   }
 
 
-  # Check if all shares conserve the normalization
-  normCheck <- table %>%
+  #-----------------------------------------------------------------------------
+  # NOTE: this bit of code is only to force a result of this function. The EC
+  # shares should be calculated in advance.
+
+  ecShares <- table %>%
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    summarise(value = sum(.data[["shareEUEC"]], na.rm=TRUE)) %>%
+    ungroup() %>%
     group_by(across(all_of(c("region", "period")))) %>%
-    summarise(value = sum(.data[["shareEUEC"]], na.rm = TRUE)) %>%
-    filter(.data[["value"]] < .99)
-
-  if (nrow(normCheck) != 0) {
-    print("Replaced Shares are not normalized to 1.\n")
-    print(normCheck)
-  }
-
+    mutate(value = .data[["value"]] / sum(.data[["value"]])) %>%
+    ungroup() %>%
+    rename(shareEC = "value")
 
   # Scale Shares to Carrier Level
   table <- table %>%
-    mutate(share = .data[["shareEUEC"]] / .data[["shareEC"]]) %>%
+    left_join(ecShares, by = c("region", "period", "carrier")) %>%
+    mutate(share = .data[["shareEUEC"]] / .data[["shareEC"]],
+           share = ifelse(is.finite(.data[["share"]]), .data[["share"]], 0)) %>%
     select(-"shareEUEC")
+  #-----------------------------------------------------------------------------
 
-
-  # Correct for Enduse-Carrier Combinations
-  if (correct) {
-    enduses <- unique(table$enduse)
-
-    # Make "space_cooling" and "appliances" fully electric
-    tableCorr <- table %>%
-      select(-"shareEU", -"shareEC") %>%
-      spread("enduse", "share") %>%
-      mutate(space_cooling = ifelse(.data[["carrier"]] == "elec", 1, 0))
-
-    if ("refrigerators" %in% colnames(tableCorr)) {
-      tableCorr <- mutate(tableCorr, refrigerators = ifelse(.data[["carrier"]] == "elec", 1, 0))
-    } else {
-      tableCorr <- mutate(tableCorr, appliances = ifelse(.data[["carrier"]] == "elec", 1, 0))
-    }
-
-    table <- tableCorr %>%
-      gather(key = "enduse", value = "share", enduses) %>%
-      mutate(share = replace_na(.data[["share"]], 0)) %>%
-      right_join(table %>% select(-"share"),
-                 by = c("region", "period", "carrier", "enduse"))
-
-    # Re-Normalize
-    table <- table %>%
-      group_by(across(all_of(c("region", "period", "carrier")))) %>%
-      mutate(share = .data[["share"]] / sum(.data[["share"]], na.rm = TRUE)) %>%
-      ungroup()
-  }
 
   # Add excluded Carrier-Enduse combinations as 0's
   tableFull <- table %>%

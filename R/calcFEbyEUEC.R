@@ -34,17 +34,22 @@ calcFEbyEUEC <- function() {
 
   # FE EU Data
   etpEU <- calcOutput("Shares",
-                      subtype = "enduse_thermal",
+                      subtype = "enduse_nonthermal",
                       feOnly = TRUE,
                       aggregate = FALSE) %>%
     as.quitte()
 
 
   # Odyssee Data for Share Replacement
-  sharesOdyssee <- calcOutput("ShareOdyssee",
-                              subtype = "enduse_carrier",
-                              aggregate = FALSE) %>%
-                   as.quitte()
+  # sharesOdyssee <- calcOutput("ShareOdyssee",
+  #                             subtype = "enduse_carrier",
+  #                             aggregate = FALSE) %>%
+  #                  as.quitte()
+  feOdyssee <- calcOutput("ShareOdyssee",
+                          subtype = "enduse_carrier",
+                          feOnly = TRUE,
+                          aggregate = FALSE) %>%
+    as.quitte()
 
 
   # ETP mapping
@@ -60,12 +65,6 @@ calcFEbyEUEC <- function() {
                "appliances-biotrad",
                "appliances-coal",
                "appliances-heat",
-               "refrigerators-natgas",
-               "refrigerators-petrol",
-               "refrigerators-biomod",
-               "refrigerators-biotrad",
-               "refrigerators-coal",
-               "refrigerators-heat",
                "lighting-biomod",
                "lighting-biotrad",
                "lighting-coal",
@@ -84,18 +83,18 @@ calcFEbyEUEC <- function() {
   # Reduce the data frames dimensions to the minimal set
   commonRegionsPeriods <- Reduce(inner_join,
                                  list(unique(ieaIO[, c("region", "period")]),
-                                      unique(shares[, c("region", "period")]))) %>%
+                                      unique(sharesEU[, c("region", "period")]))) %>%
     as_tibble()
 
   ieaIO <- commonRegionsPeriods %>%
     left_join(ieaIO, by = c("region", "period"))
-  shares <- commonRegionsPeriods %>%
-    left_join(shares, by = c("region", "period"))
+  sharesEU <- commonRegionsPeriods %>%
+    left_join(sharesEU, by = c("region", "period"))
 
 
   # Prepare toolDisaggregate Input
 
-  sharesOdyssee <- sharesOdyssee %>%
+  feOdyssee <- feOdyssee %>%
     select("region", "period", "carrier", "enduse", "value")
 
   regmapping <- regmapping %>%
@@ -113,8 +112,12 @@ calcFEbyEUEC <- function() {
 
   # Disaggregate FE with EU/EC Shares
   ieaIO <- ieaIO %>%
-    select(-"model", -"scenario", -"variable", -"unit") %>%
-    toolDisaggregate(sharesEU, etpEU, exclude = exclude, sharesReplace = sharesOdyssee)
+    select(-"model", -"scenario") %>%
+    mutate(unit = "fe") %>%
+    toolDisaggregate(sharesEU,
+                     etpEU,
+                     exclude = exclude,
+                     dataReplace = feOdyssee)
 
 
 

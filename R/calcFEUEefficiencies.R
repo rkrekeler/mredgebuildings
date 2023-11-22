@@ -29,7 +29,8 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
   gdppop <- calcOutput("GDPPop", aggregate = FALSE) %>%
     as.quitte()
 
-  parsCorr <- read.csv("correct_efficiencies.csv", sep = ";")
+  # parsCorr <- read.csv("correct_efficiencies.csv", sep = ";")
+  parsCorr <- toolGetMapping("correct_efficiencies.csv", type = "sectoral")
 
 
   # PARAMETERS -----------------------------------------------------------------
