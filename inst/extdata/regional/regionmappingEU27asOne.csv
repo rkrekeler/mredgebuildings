@@ -164,7 +164,7 @@ Nigeria;NGA;ROW
 Niue;NIU;ROW
 Norfolk Island;NFK;ROW
 Northern Mariana Islands;MNP;ROW
-Norway;NOR;EUR
+Norway;NOR;ROW
 Oman;OMN;ROW
 Pakistan;PAK;ROW
 Palau;PLW;ROW
@@ -214,7 +214,7 @@ Suriname;SUR;ROW
 Svalbard and Jan Mayen;SJM;ROW
 Swaziland;SWZ;ROW
 Sweden;SWE;EUR
-Switzerland;CHE;EUR
+Switzerland;CHE;ROW
 Syrian Arab Republic;SYR;ROW
 Taiwan, Province of China;TWN;ROW
 Tajikistan;TJK;ROW
@@ -233,7 +233,7 @@ Tuvalu;TUV;ROW
 Uganda;UGA;ROW
 Ukraine;UKR;ROW
 United Arab Emirates;ARE;ROW
-United Kingdom;GBR;EUR
+United Kingdom;GBR;ROW
 United States;USA;ROW
 United States Minor Outlying Islands;UMI;ROW
 Uruguay;URY;ROW
