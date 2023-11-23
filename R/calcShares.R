@@ -8,9 +8,8 @@
 #'
 #' @author Antoine Levesque, Hagen Tockhorn
 #'
-#' @importFrom rlang .data
 #' @importFrom dplyr mutate as_tibble filter select rename group_by across
-#' all_of ungroup %>%
+#' all_of ungroup %>% .data
 #' @importFrom tidyr replace_na
 
 
@@ -38,19 +37,19 @@ calcShares <- function() {
   # for EU-EC disaggregation and will be added later on as zeros.
 
   exclude <- c("appliances-biomod",
-              "appliances-biotrad",
-              "appliances-coal",
-              "appliances-heat",
-              "lighting-biomod",
-              "lighting-biotrad",
-              "lighting-coal",
-              "lighting-heat",
-              "cooking-heat",
-              "space_cooling-biomod",
-              "space_cooling-biotrad",
-              "space_cooling-coal",
-              "space_cooling-natgas",
-              "space_cooling-petrol")
+               "appliances-biotrad",
+               "appliances-coal",
+               "appliances-heat",
+               "lighting-biomod",
+               "lighting-biotrad",
+               "lighting-coal",
+               "lighting-heat",
+               "cooking-heat",
+               "space_cooling-biomod",
+               "space_cooling-biotrad",
+               "space_cooling-coal",
+               "space_cooling-natgas",
+               "space_cooling-petrol")
 
 
   #---Calculate Combined EU-EC Shares for ETP Data
@@ -79,8 +78,9 @@ calcShares <- function() {
   # behavior of the shares and extrapolate the missing data of ETP with these.
 
   data <- data %>%
-    left_join(sharesETP %>% select(-"model", -"scenario", -"variable", -"unit", -"period"),
-    by = c("region", "carrier", "enduse")) %>%
+    left_join(sharesETP %>%
+                select(-"model", -"scenario", -"variable", -"unit", -"period"),
+              by = c("region", "carrier", "enduse")) %>%
     mutate(value = ifelse(is.na(.data[["value.x"]]),
                           .data[["value.y"]],
                           .data[["value.x"]])) %>%

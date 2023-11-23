@@ -7,8 +7,8 @@
 #'
 #' @author Hagen Tockhorn
 #'
-#' @importFrom rlang .data
-#' @importFrom dplyr mutate inner_join right_join left_join as_tibble filter select %>%
+#' @importFrom dplyr mutate inner_join right_join left_join as_tibble filter
+#'   select %>% .data
 #' @importFrom madrat toolCountryFill
 #' @importFrom quitte as.quitte
 #' @importFrom magclass as.magpie
@@ -18,7 +18,8 @@
 
 getFEbyEUEC <- function() {
   #---Read-in FE Data
-  ieaIO <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", aggregate = FALSE) %>%
+  ieaIO <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings",
+                      aggregate = FALSE) %>%
     as.quitte(na.rm = TRUE)
 
 
@@ -43,8 +44,8 @@ getFEbyEUEC <- function() {
     mutate(carrier = .data[["variable"]]) %>%
     select(-"model", -"scenario", -"variable", -"unit") %>%
     right_join(shares %>%
-                mutate(share = .data[["value"]]) %>%
-                select(-"model", -"scenario", -"variable", -"value"),
+                 mutate(share = .data[["value"]]) %>%
+                 select(-"model", -"scenario", -"variable", -"value"),
                by = c("region", "period", "carrier")) %>%
     mutate(value = .data[["share"]] * .data[["value"]],
            unit = "fe") %>%
