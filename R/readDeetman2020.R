@@ -18,8 +18,10 @@
 readDeetman2020 <- function(subtype = "residential") {
 
   switch(subtype,
+    # see Table 3 in Deetman et al. 2020
     residential = read.csv("table3.csv") %>%
       pivot_longer(-"region", names_to = "variable"),
+    # see Deetman et al. 2020 p. 5
     commercial = data.frame(region = "GLO",
                             variable = c("shape", "scale", "mean_lt"),
                             value = c(1.44, 49.6, 45)),
