@@ -7,7 +7,7 @@
 readEHI(subtype)
 }
 \arguments{
-\item{subtype}{\if{html}{\out{<report series>}}.\if{html}{\out{<variable>}}}
+\item{subtype}{Character, report to read}
 }
 \value{
 magpie object

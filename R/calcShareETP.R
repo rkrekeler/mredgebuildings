@@ -15,9 +15,8 @@
 #' @importFrom madrat readSource toolCountryFill
 #' @importFrom quitte as.quitte revalue.levels
 #' @importFrom dplyr filter %>% mutate group_by across all_of left_join
-#' summarise
+#' summarise syms
 #' @importFrom plyr revalue
-#' @importFrom rlang .data syms
 #' @importFrom tidyr separate replace_na complete
 #' @importFrom utils tail
 #' @export
@@ -44,15 +43,16 @@ calcShareETP <- function(subtype = c("enduse", "carrier")) {
       `Buildings|Buildings - Total final energy consumption by end-use|Lighting` = "lighting",
       `Buildings|Buildings - Total final energy consumption by end-use|Appliances and miscellaneous equipments`
       = "appliances",
-      `Buildings|Buildings - Total final energy consumption by end-use|Cooking` = "cooking"),
-
+      `Buildings|Buildings - Total final energy consumption by end-use|Cooking` = "cooking"
+    ),
     carrier = c(
       `Buildings|Buildings - Total final energy consumption|Coal` = "coal",
       `Buildings|Buildings - Total final energy consumption|Oil products` = "petrol",
       `Buildings|Buildings - Total final energy consumption|Natural gas` = "natgas",
       `Buildings|Buildings - Total final energy consumption|Commercial heat` = "heat",
       `Buildings|Buildings - Total final energy consumption|Electricity` = "elec",
-      `Buildings|Buildings - Total final energy consumption|Biomass, waste and other renewables` = "biomod")
+      `Buildings|Buildings - Total final energy consumption|Biomass, waste and other renewables` = "biomod"
+    )
   )
 
   # map variables
@@ -72,7 +72,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier")) {
     edgeBio <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", aggregate = FALSE)
     feBio <- calcOutput("IO", subtype = "output_biomass", aggregate = FALSE)
     shareBiotrad <- edgeBio[, , "biotrad"] / (feBio[, , "sesobio.fesob.tdbiosob"]
-                                            + feBio[, , "sesobio.fesoi.tdbiosoi"])
+                                              + feBio[, , "sesobio.fesoi.tdbiosoi"])
     shareBiotrad[is.na(shareBiotrad)] <- 0
     shareBiotrad <- shareBiotrad %>%
       as.quitte() %>%

@@ -18,8 +18,7 @@
 #' @importFrom madrat readSource toolCountryFill
 #' @importFrom quitte as.quitte revalue.levels
 #' @importFrom dplyr filter %>% mutate group_by across all_of left_join
-#' summarise
-#' @importFrom rlang .data syms
+#' summarise .data syms
 #' @importFrom tidyr separate replace_na complete
 #' @importFrom utils tail
 #' @export
@@ -41,17 +40,20 @@ calcShareOdyssee <- function(subtype = c("enduse", "enduse_carrier")) {
     gaz = "natgas",
     vap = "heat",
     enc = "biomod",
-    elc = "elec")
+    elc = "elec"
+  )
   revalSector <- c(
     cfres = "residential",
-    cfter = "services")
+    cfter = "services"
+  )
   revalEnduse <- c(
     chf = "space_heating",
     ecs = "water_heating",
     cui = "cooking",
     cli = "space_cooling",
     els1 = "appliances",
-    lgt = "lighting")
+    lgt = "lighting"
+  )
   vars <- expand.grid(names(revalCarrier),
                       names(revalSector),
                       names(revalEnduse)) %>%
@@ -101,7 +103,7 @@ calcShareOdyssee <- function(subtype = c("enduse", "enduse_carrier")) {
       group_by(across(-all_of(c(colShare, "value")))) %>%
       mutate(value = proportions(.data[["value"]])) %>%
       ungroup()
-}
+  }
 
   shareGlobal <- odyssee %>%
     group_by(across(all_of(shareOf))) %>%

@@ -15,8 +15,7 @@
 #' @author Robin Hasse
 #'
 #' @importFrom utils read.csv capture.output
-#' @importFrom dplyr %>% select mutate group_by filter rename
-#' @importFrom rlang .data
+#' @importFrom dplyr %>% select mutate group_by filter rename .data
 #' @importFrom tidyr gather
 #' @importFrom quitte as.quitte
 #' @importFrom magclass as.magpie

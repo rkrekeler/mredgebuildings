@@ -16,8 +16,7 @@
 #' @importFrom madrat readSource calcOutput toolCountryFill
 #' @importFrom quitte as.quitte calc_addVariable
 #' @importFrom dplyr filter mutate select anti_join group_by left_join %>%
-#' ungroup
-#' @importFrom rlang .data
+#' ungroup .data
 #' @importFrom magclass mbind as.magpie collapseDim mselect
 #' @importFrom tidyr spread
 #' @export
