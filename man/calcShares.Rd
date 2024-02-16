@@ -48,5 +48,5 @@ data, whereas Odyssee already gives disaggregated data for countries of the
 European Union.
 }
 \author{
-Hagen Tockhorn
+Hagen Tockhorn, Robin Hasse
 }

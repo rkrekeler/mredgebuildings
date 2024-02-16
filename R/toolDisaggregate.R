@@ -1,375 +1,383 @@
-#' Disaggregates Enduse and Carrier Shares into combined enduse-carrier shares
-#' via a quadratic optimization for an under-determined linear set of equations.
+#' Disaggregate energy demand by carriers into end uses by each carrier
 #'
-#' @param data data.frame containing data on carrier-specific energy consumption.
-#'  Columns 'carrier' and 'value' are required.
-#' @param sharesEU data.frame containing enduse shares
-#' @param etpEU data.frame containing enduse energy data
-#' @param exclude list containing "enduse-carrier" pairs to be excluded
-#' @param dataReplace data.frame containing existing disaggregated carrier-enduse shares
-#' @param correct boolean that determines whether values shall be corrected for
+#' This function takes energy demand data that differentiates only by carrier
+#' and disaggregates it further such that all relevant combinations of carrier
+#' and end use are differentiated. It ensures that given end use shares (across
+#' all carriers) are met.
 #'
-#' @author Hagen Tockhorn
+#' The function essentially performs a quadratic optimisation. The constraints
+#' make sure that both the carrier quantities and the end use shares are met.
+#' This generally leaves infinite solutions (in problematic cases none). To get
+#' to one disaggregation, the deviation from a given distribution across all
+#' relevant combinations of carriers and end uses is minimised.
 #'
-#' @importFrom quadprog solve.QP
-#' @importFrom dplyr cross_join
+#' @param data data.frame with energy demand data differentiated by carriers
+#'   that is to be disaggregated
+#' @param enduseShares data.frame with end use shares that have to be met. These
+#'   shares might be given at aggregated regional resolution if
+#'   \code{regionmapping} is provided.
+#' @param exclude data.frame with the columns \code{carrier} and
+#'   \code{enduse} that should list all  combinations of the two that are
+#'   excluded. All remaining combinations of the carriers in \code{data} and the
+#'   end uses in \code{enduseShares} are considered.
+#' @param dataDisagg data.frame similar to \code{data} but already disaggregated
+#'   by carriers and end uses. The average distribution of its disaggregation
+#'   will be used as the target distribution for the minisation.
+#' @param regionmapping data.frame with the columns \code{region} an
+#'   \code{regionAgg} that maps the regions between \code{data} and
+#'   \code{enduseShares}.
+#'
+#' @author Hagen Tockhorn, Robin Hasse
+#'
+#' @importFrom quitte interpolate_missing_periods
+#' @importFrom dplyr %>% .data mutate group_by ungroup across all_of left_join
+#'   semi_join group_modify select summarise filter anti_join
 #' @export
 
 toolDisaggregate <- function(data,
-                             sharesEU,
-                             etpEU,
+                             enduseShares,
                              exclude = NULL,
-                             dataReplace = NULL) {
-  # ==== Explanation
-  # Determine the matrix coefficient based on sharesEU and sharesEC,
-  # looking for the solution closest to the data estimates.
-  #
-  #                El           Solids        Heat   |ShareEC
-  #       cooking  5            6             0      |11
-  # space heating 20            5             35     |60
-  #       cooling 29            0             0      |29
-  #--------------------------------------------------|-------
-  #      ShareEU 54            11            35     |100
-  #
-  # Figures between brackets : from 'data'
-
-  # In other words, an underdetermined linear problem of A*x = y is given, where
-  #   A : matrix containing the constraints
-  #   x : combined shares (tbd)
-  #   y : estimate of combined shares
-  # such that a solution for x has to be found.
+                             dataDisagg = NULL,
+                             regionMapping = NULL) {
 
 
-  # NOTE: Since datasets are mixed here with different regional resolutions,
-  # the above-mentioned approach was adjusted. The datasets will be disaggregated
-  # in terms of energy quantities not shares.
-  # Further, since enduse-specific data (sharesEU / etpEU) only delivers
-  # regionally aggregated data points, the constraint was loosened such that all
-  # of the encompassed regions are required to sum up to the given value stated
-  # in etpEU for the region from the mapping.
-  # In contrast, every region is still required to sum up to its corresponding
-  # carrier-specific value stated in data.
+  # CHECK AND PREPARE INPUT ----------------------------------------------------
 
-  # NOTE:
-  # Unfortunately, this function is still under maintenance since the constraints
-  # are still determined to be infeasible in a strict optimization only using
-  # equality constraints.
-  #
-  # The sum of the carrier quantities is smaller than the sum of the enduse
-  # quantities on an aggregated region level. This, of course, makes if impossible
-  # to stay within the defined constraints. The deviation comes from the fact that
-  # two independent datasets are used which deviate from each other.
-  # It is possible to define regionally aggregated EU by multiplying the aggregated
-  # carrier quantities with an EU share value (see line 271), however, this leads
-  # to large deviations such that e.g. "space_cooling" is significantly smaller in
-  # energy quantity than hat would be expected according to etpEU.
+  ## columns ====
 
-
-  # FUNCTIONS ------------------------------------------------------------------
-
-  computeShares <- function(data) {
-    groupCols <- setdiff(colnames(data), c("value", "carrier"))
-    tmp <- data %>%
-      group_by(across(all_of(groupCols))) %>%
-      mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE)) %>%
-      ungroup() %>%
-      rename(shareEC = "value")
-    return(tmp)
+  # check that all required columns are present
+  checkCols <- function(df, dfName, cols) {
+    if (!is.null(df)) {
+      missingCols <- setdiff(cols, colnames(df))
+      if (length(missingCols) > 0) {
+        stop("The input '", dfName, "' is missing the following columns: ",
+             paste(missingCols, collapse = ", "))
+      }
+    }
   }
 
-  #--- Quadratic Optimization
-  sol <- function(a, b, w, nEQ) {
-    # nolint start
-
-    # The goal is to solve the minimization of f(x) where
-    #        f(x) = norm2(Ax-y)
-    # and
-    #         x : vector (n,); estimate of disaggregated shares
-    #         y : vector (m,); real aggregated shares (shareEU1, ... , shareEC1, ...)
-    #         A : matrix (m,n); contains constraints to the problem
-    #
-    # A is necessary to ensure all disaggregated values (w.r.t EU) add up to
-    # the respective EC share.
-
-    # The solver takes the function to be minimized as´
-    #   f(x) = norm2(A*x - y) = 1/2*xT*D*x -2*yT*A*x = 1/2*xT*D*x - xT*b
-    # with
-    #   b = 2*yT*A
-    # and
-    #   D : matrix   (n*m,n*m), to be minimized, comes down to unity in this case
-    #   b : vector   (,n+m),    containing aggregated non-combined shares
-    #   x : vector   (,n*m),    containing estimated combined shares
-    #   A : matrix   (n+m,n*m), containing the constraints
-    # for
-    #   n end-uses, m carriers
-    # and
-    #   nEQ equality constraints
-    # ------------------------------
-    # Useful websites:
-    # https://vismor.com/documents/network_analysis/matrix_algorithms/S3.SS2.php
-    # http://math.stackexchange.com/questions/271794/solution-to-underdetermined-linear-equations
-    # http://stackoverflow.com/questions/9817001/optimization-with-constraints#9817442
-    # http://stackoverflow.com/questions/16365723/find-positive-solutions-to-underdetermined-linear-system-of-equations
-    # nolint end
-
-    d <- diag(length(w))
-
-    # Feed the solver
-    # r <- solve.QP(d, w, t(a), b, meq = nEQ)
-    r <- solve.QP(d, w, t(a), b)
-    # NOTE: This approach works but obviously does not take the equality
-    # constraints into consideration. Needs to be fixed.
+  checkCols(data, "data", c("region", "carrier", "value"))
+  checkCols(enduseShares, "enduseShares", c("region", "enduse", "value"))
+  checkCols(exclude, "exclude", c("carrier", "enduse"))
+  checkCols(dataDisagg, "dataDisagg", c("region", "enduse", "value", "enduse"))
+  checkCols(regionMapping, "regionMapping", c("region", "regionAgg"))
 
 
-    zFinal <- r$solution
+  ## region mapping ====
 
-    # It might be that zero is approximated with very small values
-    zFinal[abs(zFinal) < 1e-10] <- 0
-
-    return(zFinal)
-  }
-
-
-
-  #---Compute the disaggregated shares
-  computeEUEC <- function(reg, per) {
-    #--- computes the shares of EUEC, which are the closest from
-    #--- the EUEC shares estimated with the Odyssee Database and
-    #--- which solve the EC and EU equations with only positive parameters
-    #---------------------------
-    #--- params
-    #------- reg  : region of consideration
-    #------- per  : time period (year) of consideration
-
-
-    tmp <- table[table[["regionAgg"]] == reg & table[["period"]] == per, ]
-    tmp <- quitte::factor.data.frame(tmp)
-
-
-    # Exclude Countries with NaN entries
-    if (any(is.na(tmp$etpEU)) || any(is.na(tmp$dataFE))) {
-      tmp$index <- NULL
-      return(tmp)
-    } else {
-      input <- tmp[tmp[["index"]], ][["shareEUEC"]]
-
-      eu <- levels(tmp[["enduse"]])
-      nEU <- length(eu)
-      ec <- levels(tmp[["carrier"]])
-      nEC <- length(ec)
-      regs <- unique(tmp[["region"]])
-      nRegs <- length(regs)
-
-
-      # Transform the information in the DF into a linear system
-      # where the sharesEUEC correspond to the unknowns.
-
-      #---Equality Constraints (A %*% w == x)
-
-      # NOTE: only the EC values are taken as equality constraints
-      # This was supposed to fix the feasibility issues, but didn't. For a full
-      # run, it would be wishful to consider all equality constraints, meaning
-      # nEQ <- nEC * Regs + nEU
-      nEQ <- nEC * nRegs
-
-      numCol <- nrow(tmp)
-      x <- matrix(0, nrow = nEU  + (nEC * nRegs), ncol = numCol)
-      y <- numeric(length = nEU + (nEC * nRegs))
-
-
-      # Build the Constraint Matrix x and Solution y
-      i <- 1
-
-      # second fill for the country-specific equations Sum(EUEC) = EC
-      for (r in regs) {
-        tmpReg <- filter(tmp, .data[["region"]] == r)
-        for (c in ec) {
-          index <- tmpReg[tmpReg[["carrier"]] == c, ][["index"]]
-          x[i, index] <- 1
-          y[i] <- unique(tmpReg[tmpReg[["carrier"]] == c, ][["dataFE"]])
-          i <- i + 1
-        }
-      }
-
-      # first fill for the equations Sum(EUEC) = EU
-      for (u in eu) {
-        index <- tmp[tmp[["enduse"]] == u, ][["index"]]
-        x[i, index] <- 1
-        y[i] <- unique(tmp[tmp[["enduse"]] == u, ][["etpEU"]])
-        i <- i + 1
-      }
-
-      #---Inequality Constraints (A %*% w >= 0)
-      # x <- rbind(x, diag(nrow = numCol, ncol = numCol)) #nolint
-      # y <- c(y, replicate(n = numCol, 0))               #nolint
-
-      # find the solution the closest from input, our estimate of EUEC
-      output <- sol(x, y, input, nEQ)
-
-      tmp[tmp[["index"]], "shareEUEC"] <- output
-
-      tmp$index <- NULL
-      return(tmp)
+  # no regionMapping needed if data and enduseShares share regional resolution
+  if (is.null(regionMapping)) {
+    missingRegions <- setdiff(data[["region"]], enduseShares[["region"]])
+    if (length(missingRegions) > 0) {
+      stop("If no regionMapping is provided, data and enduseShares need to ",
+           "have the same regional resolution. But the follwing regions in ",
+           "data are missing in enduseShares: ",
+           paste(missingRegions, collapse = ", "))
+    }
+    regionMapping <- data.frame(region    = unique(data[["region"]]),
+                                regionAgg = unique(data[["region"]]))
+  } else {
+    missingRegions <- setdiff(data[["region"]], regionMapping[["region"]])
+    if (length(missingRegions) > 0) {
+      stop("The follwing regions in data are missing in regionMapping: ",
+           paste(missingRegions, collapse = ", "))
     }
   }
 
 
+  ## end use shares ====
 
-  # PARAMETERS -----------------------------------------------------------------
-
-  # Overlapping Periods w/ input data
-  years <- intersect(getPeriods(data), getPeriods(etpEU))
-
-  # Replacement Regions
-  replaceRegs <- dataReplace %>%
-    filter(!is.na(.data[["value"]])) %>%
-    select("region") %>%
-    unique()
-
-
-
-  # PROCESS DATA ---------------------------------------------------------------
-
-  # Filter periods in common
-  data <- data %>% filter(.data[["period"]] %in% years)
-  etpEU <- etpEU %>% filter(.data[["period"]] %in% years)
-  sharesEU <- sharesEU %>% filter(.data[["period"]] %in% years)
-
-  dataDis <- data %>%
-    filter(.data[["unit"]] == "fe") %>%
-    select("region", "period", "variable", "value") %>%
-    interpolate_missing_periods(expand.values = TRUE) %>%
-    rename(carrier = "variable")
-
-  ecShares <- computeShares(dataDis) %>%
-    mutate(shareEC = ifelse(.data[["shareEC"]] == 0,
-                            NA,
-                            .data[["shareEC"]]))
-
-
-  # Filter out regions later to be replaced
-  etpEU <- filter(etpEU, !(.data[["region"]] %in% replaceRegs$region))
-  dataDis <- filter(dataDis, !(.data[["region"]] %in% replaceRegs$region))
-  sharesEU <- filter(sharesEU, !(.data[["region"]] %in% replaceRegs$region))
-
-
-  # change the name of the value column
-  etpEU   <- rename(etpEU, etpEU = .data[["value"]])
-  sharesEU   <- rename(sharesEU, shareEU = .data[["value"]])
-
-
-  tableShares <- dataDis %>%
-    rename(dataFE = "value") %>%
-    left_join(etpEU, by = c("region", "period")) %>%
-    left_join(sharesEU %>%
-                select("region", "period", "enduse", "shareEU"),
-              by = c("region", "period", "enduse")) %>%
-    mutate(shareEU = replace_na(.data[["shareEU"]], 0))
-
-
-  # Exclude unwanted EU-EC Combinations
-  if (!is.null(exclude)) {
-    tableShares <- tableShares %>%
-      unite(col = "EUEC", .data[["enduse"]], .data[["carrier"]], sep = "-", remove = FALSE) %>%
-      anti_join(data.frame("EUEC" = exclude), by = "EUEC") %>%
-      select(-"EUEC")
-
-    if (!is.null(dataReplace)) {
-      dataReplace <- dataReplace %>%
-        unite(col = "EUEC", .data[["enduse"]], .data[["carrier"]], sep = "-", remove = FALSE) %>%
-        anti_join(data.frame("EUEC" = exclude), by = "EUEC") %>%
-        select(-"EUEC") %>%
-        group_by(across(all_of(c("region", "period")))) %>%
-        mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE)) %>%
-        ungroup()
-    }
-  }
-
-
-  # Calculate Shared FE Proportion and Aggregate Enduse Data
-  tableShares <- tableShares %>%
-    mutate(shareEUEC = .data[["dataFE"]] * .data[["shareEU"]]) %>%
-    group_by(across(all_of(c("period", "EEAReg", "enduse")))) %>%
-    mutate(etpEU = sum(unique(.data[["etpEU"]]), na.rm = TRUE)) %>%
-    ungroup() %>%
-    rename(regionAgg = "EEAReg") %>%
-    select(-"shareEU")
-
-
-  # Add an index column which gives the number of the row inside each group:
-  # this is useful for building the matrix inside computeEUEC
-  table <- tableShares %>%
-    group_by(across(all_of(c("regionAgg", "period")))) %>%
-    mutate(index = seq_along(.data[["regionAgg"]])) %>%
+  # normalise to make sure that shares add up to 1
+  enduseShares <- enduseShares %>%
+    group_by(across(-all_of(c("enduse", "value")))) %>%
+    mutate(value = proportions(.data[["value"]])) %>%
     ungroup()
 
 
-  # Iteratively calculate Shares
-  table <- do.call(rbind,
-                   mapply(computeEUEC, # nolint
-                          unique(table[c("regionAgg", "period")])[[1]],
-                          unique(table[c("regionAgg", "period")])[[2]],
-                          SIMPLIFY = FALSE))
+  ## carrier end use mapping
 
-
-  # Replace with existing Shares and re-normalize due to excluded EUEC
-  if (!is.null(dataReplace)) {
-    dataReplace <- dataReplace %>%
-      select("region", "period", "carrier", "enduse", "value") %>%
-      rename(shareEUEC = "value") %>%
-      na.omit(cols = "shareEUEC")
-
-    table <- table %>%
-      select("region", "period", "carrier", "enduse", "shareEUEC") %>%
-      rbind(dataReplace) %>%
-      group_by(across(all_of(c("region", "period")))) %>%
-      mutate(shareEUEC = .data[["shareEUEC"]] / sum(.data[["shareEUEC"]], na.rm = TRUE)) %>%
-      ungroup()
+  # all combinations of carriers and end uses except those excluded
+  carrierEnduseMapping <- expand.grid(carrier = unique(data[["carrier"]]),
+                                      enduse = unique(enduseShares[["enduse"]]))
+  if (!is.null(exclude)) {
+    carrierEnduseMapping <- carrierEnduseMapping %>%
+      anti_join(exclude, by = c("carrier", "enduse"))
   }
 
 
-  #-----------------------------------------------------------------------------
-  # NOTE: this bit of code is only to force a result of this function. The EC
-  # shares should be calculated in advance.
 
-  ecShares <- table %>%
-    group_by(across(all_of(c("region", "period", "carrier")))) %>%
-    summarise(value = sum(.data[["shareEUEC"]], na.rm = TRUE),
-              .groups = "drop") %>%
+  # GENERATE ESTIMATE ----------------------------------------------------------
+
+  if (is.null(dataDisagg)) {
+    # naive estimate: overall carrier distribution applies to all end uses
+    estimate <- data %>%
+      left_join(regionMapping, by = "region") %>%
+      left_join(carrierEnduseMapping,
+                by = "carrier",
+                relationship = "many-to-many") %>%
+      join_all(enduseShares, by = c(regionAgg = "region")) %>%
+      mutate(estimate = .data[["value.x"]] * .data[["value.y"]]) %>%
+      select(-"value.x", -"value.y")
+
+  } else {
+    # use carrier-end use distribution from given disaggregated data
+    # missing periods get the average distribution across all given regions
+    estimateRegional <- dataDisagg %>%
+      semi_join(carrierEnduseMapping, by = c("carrier", "enduse")) %>%
+      interpolate_missing_periods(unique(data[["period"]]),
+                                  expand.values = TRUE) %>%
+      suppressWarnings()
+    estimateGlobal <- estimateRegional %>%
+      group_by(across(-all_of(c("region", "value")))) %>%
+      summarise(value = sum(.data[["value"]], na.rm = TRUE),
+                .groups = "drop") %>%
+      group_by(across(-all_of(c("enduse", "value")))) %>%
+      mutate(share = proportions(.data[["value"]])) %>%
+      select(-"value")
+    estimateRegional <- estimateRegional %>%
+      group_by(across(-all_of(c("enduse", "value")))) %>%
+      mutate(share = proportions(.data[["value"]])) %>%
+      select(-"value")
+    estimate <- data %>%
+      join_all(estimateRegional) %>%
+      join_all(estimateGlobal, exclude = "share",
+               suffix = c("Regional", "Global")) %>%
+      mutate(estimate = .data[["value"]] *
+               ifelse(is.na(.data[["shareRegional"]]),
+                      .data[["shareGlobal"]],
+                      .data[["shareRegional"]])) %>%
+      select(-"value", -"shareRegional", -"shareGlobal")
+  }
+
+
+
+  # DISAGGREGATE  --------------------------------------------------------------
+
+  # Disaggregate within each group of aggregated regions and periods
+  dataOut <- data %>%
+
+    # map regions from data to agg. regions from enduseShares
+    left_join(regionMapping, by = "region") %>%
+
+    # total demand in each agg. region
+    group_by(across(-all_of(c("region", "carrier", "value")))) %>%
+    mutate(total = sum(.data[["value"]])) %>%
+
+    # map carriers to relevant end uses
+    left_join(carrierEnduseMapping, by = "carrier",
+              relationship = "many-to-many") %>%
+
+    # share of end uses in total demand within each agg. region
+    join_all(enduseShares %>%
+               rename(enduseShare = "value"),
+             by = c(regionAgg = "region"),
+             relationship = "many-to-many") %>%
+
+    # total demand per end use in each agg. region
+    mutate(enduseTotal = .data[["enduseShare"]] * .data[["total"]]) %>%
+
+    # estimated disaggregation that should be met as closely as possible
+    join_all(estimate)
+
+  dataOut <- dataOut %>%
+
+    # remove region-carrier combinations with zero demand to reduce problem size
+    filter(.data[["value"]] > 0) %>%
+
+    # disaggregate demand  within each agg. region
+    group_by(across(-all_of(c("region", "carrier", "enduse", "estimate",
+                              "value", "enduseTotal", "enduseShare", "total")))) %>%
+    group_modify(.disaggregate) %>%
     ungroup() %>%
-    group_by(across(all_of(c("region", "period")))) %>%
-    mutate(value = .data[["value"]] / sum(.data[["value"]])) %>%
-    ungroup() %>%
-    rename(shareEC = "value")
 
-  # Scale Shares to Carrier Level
-  table <- table %>%
-    left_join(ecShares, by = c("region", "period", "carrier")) %>%
-    mutate(share = .data[["shareEUEC"]] / .data[["shareEC"]],
-           share = ifelse(is.finite(.data[["share"]]), .data[["share"]], 0)) %>%
-    select(-"shareEUEC")
-  #-----------------------------------------------------------------------------
+    # recover region-carrier combinations with zero demand
+    join_all(dataOut %>% select(-"estimate", -"value", -"enduseTotal",
+                                -"enduseShare", -"total"),
+             .direction = "right") %>%
+    mutate(value = replace_na(.data[["value"]], 0)) %>%
+
+    # remove information on precision (can be kept for debugging)
+    select(-"precision")
 
 
-  # Add excluded Carrier-Enduse combinations as 0's
-  tableFull <- table %>%
-    select("region", "period") %>%
-    unique() %>%
-    dplyr::cross_join(data.frame("EUEC" = exclude)) %>%
-    mutate(share = 0) %>%
-    separate(col = "EUEC", into = c("enduse", "carrier"), sep = "-") %>%
-    rbind(table %>% select("region", "period", "enduse", "carrier", "share"))
+  return(dataOut)
+}
 
 
-  # Apply Shares on FE Data
-  data <- data %>%
-    rename(carrier = "variable") %>%
-    left_join(tableFull %>%
-                select("region", "period", "carrier", "enduse", "share"),
-              by = c("region", "period", "carrier")) %>%
-    mutate(value = .data[["value"]] * .data[["share"]]) %>%
-    select(-"share")
+
+#' Disaggregate energy demand within on aggregated region
+#'
+#' Disaggregate regional energy demand per carrier by end use while meeting the
+#' end use shares in the aggregated region.
+#'
+#' The function first tries to find a solution that satisfies both the regional
+#' carrier and the overall end use constraints. If there is no solution, another
+#' optimisation is run that tries to also minimise deviations from the end use
+#' quantities but removes them from the constraints.
+#'
+#' @param subset data frame for one period and aggregated region
+#' @param key named vector with specification of the subset group (not used)
+#'
+#' @importFrom dplyr %>%  .data mutate select all_of full_join
+#' @importFrom tidyr unite pivot_wider
+#' @importFrom quadprog solve.QP
+#' @importFrom purrr reduce
+
+.disaggregate <- function(subset, key) {
+
+  # types of constraints:
+  #   - total demand per carrier in each region has to be met
+  #   - total demand per end use in each agg. region has to be met
+  #   - all disaggregated quantities have to be larger or equal zero
+  constraints <- list(carrier = c("region", "carrier"),
+                      enduse  = "enduse",
+                      zero    = c("region", "carrier", "enduse"))
+
+  # weight that increases the importance of minimising the deviation from given
+  # end use quantities over minimising the deviations from the estimate
+  # the estimate is often times rather arbitrary -> high weight
+  weight <- 100
 
 
-  return(data)
+
+  # PREPARE DATA ---------------------------------------------------------------
+
+
+  # target values to get to as closely as possible
+  variables <- subset %>%
+    select("region", "carrier", "enduse", "estimate") %>%
+    unique()
+
+  # rescale weight with the number of individual regions to have comparable
+  # weighting independent of the size of the aggregated region
+  weight <- weight / length(unique(variables[["region"]]))
+
+  # right-hand side of the constraints
+  constraintRHS <- lapply(names(constraints), function(c) {
+    subset %>%
+      mutate(value = switch(c,
+                            carrier = .data[["value"]],
+                            enduse = .data[["enduseTotal"]],
+                            zero = 0)) %>%
+      unite("rhs", all_of(constraints[[c]]), sep = "-", remove = FALSE) %>%
+      select("rhs", "value") %>%
+      unique()
+  })
+  names(constraintRHS) <- names(constraints)
+
+  # number of constraints
+  nConstraints <- as.numeric(lapply(constraintRHS, nrow))
+
+  # constraint matrix: maps disaggregated to aggregated quantities
+  constraintMatrix <- lapply(names(constraints), function(c) {
+    subset %>%
+      select("region", "carrier", "enduse") %>%
+      unique() %>%
+      mutate(value = 1) %>%
+      unite("cols", all_of(constraints[[c]]), sep = "-", remove = FALSE) %>%
+      pivot_wider(names_from = "cols", values_fill = 0)
+  })
+  names(constraintMatrix) <- names(constraints)
+
+  # identity matrix
+  identityMatrix <- diag(nrow(variables))
+
+  # first look for exact solution
+  # If there is none, find one that matches end use quantities closely
+  # for (precision in c("exact", "close")) {
+    for (precision in c("close")) {
+
+    # BUILD MATRICES -----------------------------------------------------------
+
+    if (precision == "exact") {
+
+      Dmat <- identityMatrix
+
+      dvec <- variables %>%
+        getElement("estimate")
+
+      Amat <- constraintMatrix %>%
+        reduce(full_join, by = c("region", "carrier", "enduse")) %>%
+        select(-"region", -"carrier", -"enduse") %>%
+        as.matrix()
+
+      bvec <- constraintRHS %>%
+        do.call(what = rbind) %>%
+        getElement("value")
+
+      meq  <- sum(nConstraints[1:2])
+
+    } else if (precision == "close") {
+
+      enduseMatrix <- constraintMatrix[["enduse"]] %>%
+        select(-"region", -"carrier", -"enduse") %>%
+        as.matrix()
+      objectiveMatrix <- rbind(identityMatrix, weight * t(enduseMatrix))
+
+      Dmat <- t(objectiveMatrix) %*% objectiveMatrix
+
+      objectiveRHS <- constraintRHS[["enduse"]] %>%
+        getElement("value")
+      objectiveRHS <- variables %>%
+        getElement("estimate") %>%
+        c(weight * objectiveRHS)
+
+      dvec <- t(objectiveMatrix) %*% objectiveRHS
+
+      Amat <- constraintMatrix[c("carrier", "zero")] %>%
+        reduce(full_join, by = c("region", "carrier", "enduse")) %>%
+        select(-"region", -"carrier", -"enduse") %>%
+        as.matrix()
+
+      bvec <- constraintRHS[c("carrier", "zero")] %>%
+        do.call(what = rbind) %>%
+        getElement("value")
+
+      meq  <- nConstraints[1]
+    }
+
+
+
+    # SOLVE --------------------------------------------------------------------
+
+    # solve quadratic problem (QP)
+    # - exact:
+    #   minimise quadratic deviation from estimate
+    #   subject to matching regional carrier totals and overall end use
+    #   quantities exactly with non-negative disaggregated quantities
+    # - close:
+    #   minimise quadratic deviation from end use shares (and to lesser extend
+    #   deviations from estimate)
+    #   subject to matching regional carrier totals with non-negative
+    #   disaggregated quantities
+    r <- tryCatch(solve.QP(Dmat, dvec, Amat, bvec,meq),
+                  error = function(e) NULL)
+
+    # no need to lower the ambition if a solution is found
+    if (!is.null(r)) {
+      break
+    }
+
+  }
+
+
+
+  # RETURN ---------------------------------------------------------------------
+
+  subsetOut <- variables %>%
+    select("region", "carrier", "enduse")
+
+  if (is.null(r)) {
+    subsetOut[["value"]] <- as.numeric(NA)
+    subsetOut[["precision"]] <- as.character(NA)
+  } else {
+    subsetOut[["value"]] <- r[["solution"]]
+    subsetOut[["precision"]] <- precision
+  }
+
+  subsetOut[replace_na(subsetOut[["value"]], 0) < 1E-5 &
+              !is.na(subsetOut[["value"]]),
+            "value"] <- 0
+
+  return(subsetOut)
 }

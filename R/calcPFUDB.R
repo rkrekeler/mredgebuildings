@@ -7,13 +7,13 @@
 #'
 #' @returns magpie object
 #'
-#' @author Hagen Tockhorn
+#' @author Hagen Tockhorn, Robin Hasse
 #'
-#' @importFrom madrat readSource
-#' @importFrom quitte aggregate_map
-#'
+#' @importFrom madrat readSource toolGetMapping readSource
+#' @importFrom quitte aggregate_map as.quitte factor.data.frame revalue.levels
+#' @importFrom dplyr %>% .data filter group_by summarise mutate ungroup select
+#'   all_of any_of pull
 #' @export
-
 
 calcPFUDB <- function() {
   # FUNCTIONS ------------------------------------------------------------------
@@ -33,35 +33,17 @@ calcPFUDB <- function() {
   }
 
 
+
   # PARAMETERS -----------------------------------------------------------------
 
   # Rename Carrier Items
-  carriersnames <- c(
-    "Coal Products"      = "coal",
-    "Electricity"        = "elec",
-    "Natural Gas"        = "natgas",
-    "Petroleum Products" = "petrol",
-    "heat"               = "heat",
-    "Hydro"              = "hydro",
-    "Nuclear"            = "nuclear",
-    "Other"              = "other",
-    "Wind"               = "wind"
-  )
+  carriersnames <- toolGetMapping("carrierMap_PFUDB.csv", "sectoral",
+                                  "mredgebuildings") %>%
+    pull("EDGE", "PFUDB")
 
   # Enduse-Carrier combinations which will be systematically excluded
-  exclude <- c("refrigerators-natgas",
-               "refrigerators-petrol",
-               "refrigerators-biomod",
-               "refrigerators-biotrad",
-               "refrigerators-coal",
-               "refrigerators-heat",
-               "cooking-heat",
-               "space_cooling-heat",
-               "space_cooling-biomod",
-               "space_cooling-biotrad",
-               "space_cooling-coal",
-               "space_cooling-natgas",
-               "space_cooling-petrol")
+  exclude <- toolGetMapping("excludeEnduseCarrier.csv", "sectoral",
+                            "mredgebuildings")
 
   # fridge share of Europe (see calcShares)
   fridgeShare <- 0.17
@@ -95,7 +77,9 @@ calcPFUDB <- function() {
 
 
   # ETP mapping
-  regmapping <- toolGetMapping("regionmappingIEA_ETP.csv", where = "mappingfolder", type = "regional")
+  regmapping <- toolGetMapping("regionmappingIEA_ETP.csv",
+                               "regional",
+                               "mappingfolder")
 
 
 
@@ -108,55 +92,49 @@ calcPFUDB <- function() {
   # Map Carrier Names and Convert Units
   pfu <- pfu %>%
     revalue.levels(carrier = carriersnames) %>%
-    quitte::factor.data.frame() %>%
+    factor.data.frame() %>%
     mutate(value = replace_na(.data[["value"]], 0))
 
 
   pfu <- select(pfu, -"model", -"scenario", -"variable")
 
 
-  ## Disaggregate into Thermal and Non-Thermal Part ----------------------------
+  ## Disaggregate into Thermal and Non-Thermal Part ====
 
   # Enduse Mappings
-  enduseMapping <- data.frame(enduse = c("Light", "Stationary power", "Other"),
-                              newuse = "appliances_light")
-  enduseMappingRef <- data.frame(enduse = c("refrigerators", "appliances_light"),
-                                 new_use = "appliances_light")
-
+  enduseMapping <- toolGetMapping("enduseMap_PFUDB.csv", "sectoral",
+                                  "mredgebuildings")
 
   # Aggregate uses from PFU to appliances_light and keep the df as Non-thermal
   pfuNonTherm <- pfu %>%
     filter(.data[["enduse"]] != "Low-T heat") %>%
-    aggregate_map(mapping = enduseMapping,
+    aggregate_map(mapping = enduseMapping[1:3],
                   by = "enduse",
                   variable = "enduse",
                   forceAggregation = TRUE)
 
 
-  #--- Prepare toolDisaggregate Input
+  ## Prepare toolDisaggregate Input ====
 
-  # note: hardcoded the fridge share so that the fe data becomes compliant with
+  # note: hard-coded the fridge share so that the FE data becomes compliant with
   # the remaining input (can be done more nicely)
   feOdyssee <- feOdyssee %>%
     select("region", "period", "carrier", "enduse", "value") %>%
     filter(.data[["enduse"]] != "lighting") %>%
-    mutate(value = ifelse(.data[["enduse"]] != "appliances",
-                          .data[["value"]],
-                          .data[["value"]] * fridgeShare),
+    mutate(value = .data[["value"]] * ifelse(.data[["enduse"]] != "appliances",
+                                             1, fridgeShare),
            enduse = ifelse(.data[["enduse"]] == "appliances",
                            "refrigerators",
                            as.character(.data[["enduse"]])))
 
   regmapping <- regmapping %>%
-    mutate(EEAReg = ifelse(.data[["EEAReg"]] == "rest",
-                           .data[["OECD"]],
-                           .data[["EEAReg"]]))
+    mutate(regionAgg = ifelse(.data[["EEAReg"]] == "rest",
+                              .data[["OECD"]],
+                              .data[["EEAReg"]])) %>%
+    select(region = "CountryCode", "regionAgg")
 
   etpEU <- select(etpEU, "region", "period", "enduse", "value") %>%
-    left_join(regmapping %>%
-                select("CountryCode", "EEAReg") %>%
-                rename(region = "CountryCode"),
-              by = "region")
+    left_join(regmapping, by = "region")
 
 
   # Disaggregate Low-T Heat into different enduses
@@ -178,13 +156,14 @@ calcPFUDB <- function() {
   # Include "refrigerators" in "appliances_light"
   pfuRes <- rbind(
     pfuRes %>%
-      filter(!(.data[["enduse"]] %in% enduseMappingRef[[1]])),
+      filter(!(.data[["enduse"]] %in% enduseMapping[4:5, "enduse"])),
     pfuRes %>%
-      aggregate_map(mapping = enduseMappingRef,
+      aggregate_map(mapping = enduseMapping[4:5, ],
                     by = "enduse",
                     variable = "enduse",
                     forceAggregation = TRUE)
   )
+
 
 
   # OUTPUT ---------------------------------------------------------------------
@@ -203,9 +182,5 @@ calcPFUDB <- function() {
   )
 
   return(data)
-
-
-
-
 
 }

@@ -29,17 +29,28 @@
 #'
 #' @returns data.frame with historic energy demands
 #'
-#' @author Hagen Tockhorn
+#' @author Hagen Tockhorn, Robin Hasse
 #'
 #' @importFrom dplyr mutate as_tibble filter select rename group_by across
-#' all_of ungroup %>% .data
-#' @importFrom tidyr replace_na
+#'   all_of ungroup %>% .data left_join summarise group_modify cross_join
+#' @importFrom tidyr replace_na unite complete
+#' @importFrom madrat toolGetMapping calcOutput readSource toolCountryFill
+#' @importFrom magclass time_interpolate as.magpie
+#' @importFrom quitte inline.data.frame as.quitte factor.data.frame
+#'   interpolate_missing_periods
 
 
-calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "enduse_nonthermal", "enduse_thermal"),
+calcShares <- function(subtype = c("carrier_nonthermal",
+                                   "carrier_thermal",
+                                   "enduse_nonthermal",
+                                   "enduse_thermal"),
                        carrierCorrection = FALSE,
                        feOnly = FALSE) {
+
+
+
   # PARAMETERS -----------------------------------------------------------------
+
   subtype <- match.arg(subtype)
 
   shareOf  <- strsplit(subtype, "_")[[1]][1]
@@ -71,29 +82,8 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
 
 
   # Enduse-Carrier combinations which will be systematically excluded
-  exclude <- c("appliances-natgas",
-               "appliances-petrol",
-               "appliances-biomod",
-               "appliances-biotrad",
-               "appliances-coal",
-               "appliances-heat",
-               "refrigerators-natgas",
-               "refrigerators-petrol",
-               "refrigerators-biomod",
-               "refrigerators-biotrad",
-               "refrigerators-coal",
-               "refrigerators-heat",
-               "lighting-biomod",
-               "lighting-biotrad",
-               "lighting-coal",
-               "lighting-heat",
-               "cooking-heat",
-               "space_cooling-heat",
-               "space_cooling-biomod",
-               "space_cooling-biotrad",
-               "space_cooling-coal",
-               "space_cooling-natgas",
-               "space_cooling-petrol")
+  exclude <- toolGetMapping("excludeEnduseCarrier.csv", "sectoral",
+                            "mredgebuildings")
 
 
   # Percentage of Appliances for Refrigerators
@@ -266,7 +256,7 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
 
       dataETPfull <- dataETPfull %>%
         select(-"unit") %>%
-        quitte::factor.data.frame() %>%
+        factor.data.frame() %>%
         as.quitte() %>%
         interpolate_missing_periods(period = seq(1990, 2020)) %>%
         group_by(across(all_of(c("region", "enduse")))) %>%
@@ -393,7 +383,7 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
 
 
       # Cross-join Enduses to Carriers to give further level of resolution
-      data <- dplyr::cross_join(data, enduses)
+      data <- cross_join(data, enduses)
 
       # Re-normalize to give Enduse-specific Carrier Share
       data <- normalize(data, shareOf)
@@ -462,7 +452,6 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
   #---Weights: Regional Shares of FE
   # Weights consist of the share of each region's FE demand relative to global FE demand.
   # FE data is taken from ieaIO.
-
   regShare <- ieaIO %>%
     mutate(carrier = .data[["variable"]]) %>%
     select("region", "period", "carrier", "value") %>%
@@ -478,12 +467,8 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
     mutate(value = proportions(.data[["value"]]))
 
 
-  # OUTPUT ---------------------------------------------------------------------
 
-  regShare <- regShare %>%
-    as.magpie() %>%
-    collapseDim() %>%
-    toolCountryFill(1, verbosity = 2)
+  # OUTPUT ---------------------------------------------------------------------
 
 
   data <- data %>%
@@ -491,19 +476,31 @@ calcShares <- function(subtype = c("carrier_nonthermal", "carrier_thermal", "end
     as.magpie() %>%
     toolCountryFill(1, verbosity = 2)
 
+  regShare <- regShare %>%
+    as.magpie() %>%
+    collapseDim() %>%
+    time_interpolate(getItems(data, 2)) %>%
+    toolCountryFill(1, verbosity = 2)
 
-  if (feOnly) {
-    return(list(x = data,
-                weight = NULL,
-                unit = "EJ",
-                min = 0,
-                description = "Energy of carrier or end use in buildings demand"))
+
+
+  if (isTRUE(feOnly)) {
+    weight <- regShare
+    unit <- "EJ"
+    max <- NULL
+    description <- "Final energy deman of carrier or end use in buildings"
   } else {
-    return(list(x = data,
-                weight = NULL,
-                unit = "1",
-                min = 0,
-                max = 1,
-                description = "Share of carrier or end use in buildings demand"))
+    weight <- NULL
+    unit <- "1"
+    max <- 1
+    description <- "Share of carrier or end use in buildings final energy demand"
   }
+
+
+  return(list(x = data,
+              weight = weight,
+              unit = unit,
+              min = 0,
+              max = max,
+              description = description))
 }

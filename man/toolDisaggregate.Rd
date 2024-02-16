@@ -2,29 +2,50 @@
 % Please edit documentation in R/toolDisaggregate.R
 \name{toolDisaggregate}
 \alias{toolDisaggregate}
-\title{Disaggregates Enduse and Carrier Shares into combined enduse-carrier shares
-via a quadratic optimization for an under-determined linear set of equations.}
+\title{Disaggregate energy demand by carriers into end uses by each carrier}
 \usage{
-toolDisaggregate(data, sharesEU, etpEU, exclude = NULL, dataReplace = NULL)
+toolDisaggregate(
+  data,
+  enduseShares,
+  exclude = NULL,
+  dataDisagg = NULL,
+  regionMapping = NULL
+)
 }
 \arguments{
-\item{data}{data.frame containing data on carrier-specific energy consumption.
-Columns 'carrier' and 'value' are required.}
+\item{data}{data.frame with energy demand data differentiated by carriers
+that is to be disaggregated}
 
-\item{sharesEU}{data.frame containing enduse shares}
+\item{enduseShares}{data.frame with end use shares that have to be met. These
+shares might be given at aggregated regional resolution if
+\code{regionmapping} is provided.}
 
-\item{etpEU}{data.frame containing enduse energy data}
+\item{exclude}{data.frame with the columns \code{carrier} and
+\code{enduse} that should list all  combinations of the two that are
+excluded. All remaining combinations of the carriers in \code{data} and the
+end uses in \code{enduseShares} are considered.}
 
-\item{exclude}{list containing "enduse-carrier" pairs to be excluded}
+\item{dataDisagg}{data.frame similar to \code{data} but already disaggregated
+by carriers and end uses. The average distribution of its disaggregation
+will be used as the target distribution for the minisation.}
 
-\item{dataReplace}{data.frame containing existing disaggregated carrier-enduse shares}
-
-\item{correct}{boolean that determines whether values shall be corrected for}
+\item{regionmapping}{data.frame with the columns \code{region} an
+\code{regionAgg} that maps the regions between \code{data} and
+\code{enduseShares}.}
 }
 \description{
-Disaggregates Enduse and Carrier Shares into combined enduse-carrier shares
-via a quadratic optimization for an under-determined linear set of equations.
+This function takes energy demand data that differentiates only by carrier
+and disaggregates it further such that all relevant combinations of carrier
+and end use are differentiated. It ensures that given end use shares (across
+all carriers) are met.
+}
+\details{
+The function essentially performs a quadratic optimisation. The constraints
+make sure that both the carrier quantities and the end use shares are met.
+This generally leaves infinite solutions (in problematic cases none). To get
+to one disaggregation, the deviation from a given distribution across all
+relevant combinations of carriers and end uses is minimised.
 }
 \author{
-Hagen Tockhorn
+Hagen Tockhorn, Robin Hasse
 }
