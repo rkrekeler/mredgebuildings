@@ -27,7 +27,7 @@ convertPFUDB <- function(x) {
     as.quitte()
 
   # Get Mapping
-  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type = "regional")
+  regionmapping <- toolGetMapping("pfu_regionmapping.csv", "regional", "mredgebuildings")
 
   # Get GDP per Cap
   dfGDPpop <- calcOutput("GDPPop", aggregate = FALSE) %>%

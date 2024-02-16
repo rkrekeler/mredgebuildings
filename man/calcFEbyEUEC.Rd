@@ -14,5 +14,5 @@ Takes the historic final energy demand by carriers from IEA and disaggregates
 it into different end uses.
 }
 \author{
-Hagen Tockhorn
+Hagen Tockhorn, Robin Hasse
 }

@@ -5,23 +5,22 @@
 #'
 #' @returns data.frame with historic energy demands
 #'
-#' @author Hagen Tockhorn
+#' @author Hagen Tockhorn, Robin Hasse
 #'
-#' @importFrom rlang .data
-#' @importFrom dplyr mutate inner_join right_join left_join as_tibble filter select %>%
-#' @importFrom madrat toolCountryFill
+#' @importFrom dplyr mutate semi_join right_join left_join as_tibble filter
+#'   select %>% .data
+#' @importFrom madrat toolCountryFill calcOutput toolGetMapping
 #' @importFrom quitte as.quitte
 #' @importFrom magclass as.magpie
-#'
 #' @export
-
 
 calcFEbyEUEC <- function() {
 
   # READ-IN DATA ---------------------------------------------------------------
 
   # FE Data
-  ieaIO <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", aggregate = FALSE) %>%
+  ieaIO <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings",
+                      aggregate = FALSE) %>%
     as.quitte(na.rm = TRUE)
 
 
@@ -33,18 +32,6 @@ calcFEbyEUEC <- function() {
 
 
   # FE EU Data
-  etpEU <- calcOutput("Shares",
-                      subtype = "enduse_nonthermal",
-                      feOnly = TRUE,
-                      aggregate = FALSE) %>%
-    as.quitte()
-
-
-  # Odyssee Data for Share Replacement
-  # sharesOdyssee <- calcOutput("ShareOdyssee",
-  #                             subtype = "enduse_carrier",
-  #                             aggregate = FALSE) %>%
-  #                  as.quitte()
   feOdyssee <- calcOutput("ShareOdyssee",
                           subtype = "enduse_carrier",
                           feOnly = TRUE,
@@ -53,71 +40,59 @@ calcFEbyEUEC <- function() {
 
 
   # ETP mapping
-  regmapping <- toolGetMapping("regionmappingIEA_ETP.csv", where = "mappingfolder", type = "regional")
+  regmapping <- toolGetMapping(name = "regionmappingIEA_ETP.csv",
+                               type = "regional",
+                               where = "mappingfolder")
+
 
 
   # PARAMETERS -----------------------------------------------------------------
 
   # Enduse-Carrier combinations which will be systematically excluded
-  exclude <- c("appliances-natgas",
-               "appliances-petrol",
-               "appliances-biomod",
-               "appliances-biotrad",
-               "appliances-coal",
-               "appliances-heat",
-               "lighting-biomod",
-               "lighting-biotrad",
-               "lighting-coal",
-               "lighting-heat",
-               "cooking-heat",
-               "space_cooling-heat",
-               "space_cooling-biomod",
-               "space_cooling-biotrad",
-               "space_cooling-coal",
-               "space_cooling-natgas",
-               "space_cooling-petrol")
+  exclude <- toolGetMapping("excludeEnduseCarrier.csv", "sectoral",
+                            "mredgebuildings")
+
 
 
   # PROCESS DATA ---------------------------------------------------------------
 
   # Reduce the data frames dimensions to the minimal set
-  commonRegionsPeriods <- Reduce(inner_join,
-                                 list(unique(ieaIO[, c("region", "period")]),
-                                      unique(sharesEU[, c("region", "period")]))) %>%
-    as_tibble()
-
-  ieaIO <- commonRegionsPeriods %>%
-    left_join(ieaIO, by = c("region", "period"))
-  sharesEU <- commonRegionsPeriods %>%
-    left_join(sharesEU, by = c("region", "period"))
-
+  ieaIO <- ieaIO %>%
+    semi_join(sharesEU, by = c("region", "period"))
+  sharesEU <- sharesEU %>%
+    semi_join(ieaIO, by = c("region", "period"))
 
   # Prepare toolDisaggregate Input
-
   feOdyssee <- feOdyssee %>%
     select("region", "period", "carrier", "enduse", "value")
 
+  # Use EEA regions but split rest into OECD/non-OECD
   regmapping <- regmapping %>%
-    mutate(EEAReg = ifelse(.data[["EEAReg"]] == "rest",
-                           .data[["OECD"]],
-                           .data[["EEAReg"]]))
+    mutate(regionAgg = ifelse(.data[["EEAReg"]] == "rest",
+                              .data[["OECD"]],
+                              .data[["EEAReg"]])) %>%
+    select(region = "CountryCode", "regionAgg")
 
-  etpEU <- select(etpEU, "region", "period", "enduse", "value") %>%
-    left_join(regmapping %>%
-                select("CountryCode", "EEAReg") %>%
-                rename(region = "CountryCode"),
-              by = "region")
-
-
+  # reaggregate end use shares to ETP regions
+  # TODO: This aggregation should be done within calcOutput but for this, we
+  # need a full region mapping that doesn't require the post processing done
+  # above. I don't know yet, why in come cases, there are different values in
+  # one region but we take the mean in this case. To be checked.
+  sharesEU <- sharesEU %>%
+    left_join(regmapping, by = "region") %>%
+    group_by(across(all_of(c("regionAgg", "period", "enduse")))) %>%
+    summarise(value = mean(.data[["value"]]), .groups = "drop") %>%
+    rename(region = "regionAgg")
 
   # Disaggregate FE with EU/EC Shares
   ieaIO <- ieaIO %>%
-    select(-"model", -"scenario") %>%
+    select(-"model", -"scenario", -"unit") %>%
     mutate(unit = "fe") %>%
+    rename(carrier = "variable") %>%
     toolDisaggregate(sharesEU,
-                     etpEU,
-                     exclude = exclude,
-                     dataReplace = feOdyssee)
+                     exclude,
+                     feOdyssee,
+                     regmapping)
 
 
 

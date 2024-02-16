@@ -17,5 +17,5 @@ using FE Shares from Odyssee and IEA_ETP.
 This was adapted from EDGE function 'getPFUDB.R'.
 }
 \author{
-Hagen Tockhorn
+Hagen Tockhorn, Robin Hasse
 }
