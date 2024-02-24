@@ -4,30 +4,35 @@
 #'
 #' @returns magpie object
 #'
-#' @author Hagen Tockhorn
+#' @author Hagen Tockhorn, Robin Hasse
 #'
 #' @importFrom dplyr %>% select mutate
 #' @importFrom rlang .data
 #' @importFrom tidyr gather
-#' @importFrom quitte as.quitte
+#' @importFrom quitte as.quitte aggregate_map revalue.levels
 #' @importFrom magclass as.magpie
+#' @importFrom madrat toolGetMapping calcOutput
 #' @export
 
-
 convertTCEP <- function(x) {
+
+
   # READ-IN DATA ---------------------------------------------------------------
 
   data <- x
 
 
-  # Load Enduse Mapping (EU -> EDGE)
-  euMap <- toolGetMapping("enduse_regional_correspondances.csv", type = "regional")
-
-  # Load EDGE Mapping (EDGE -> ISO)
-  edgeMap <- toolGetMapping("regionmappingEDGE.csv", type = "regional")
-
+  # Enduse Mapping
+  # AL didn't map Middle East & Africa. Instead he mapped IND & other dev. Asia
+  # to both MIE and AFR.
+  # RH: I now map Middle East & Africa to MIE and AFR
+  # TODO: check this mapping
+  tcepMap <- toolGetMapping("regionmappingTCEP2.csv",
+                           type = "regional",
+                           where = "mredgebuildings")
 
   # Population
+  # TODO: check if FE demand in buildings should be used as weights
   pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
     as.quitte()
 
@@ -44,43 +49,24 @@ convertTCEP <- function(x) {
   )
 
 
+
   # PROCESS DATA ---------------------------------------------------------------
 
+  # remap enduse names
   data <- data %>%
     as.quitte() %>%
     select("region", "period", "variable", "unit", "value") %>%
     revalue.levels(variable = enduseMapping)
 
-
-  # Aggregate Pop for Data Disaggregation
-  popEDGE <- pop %>%
-    select("region", "period", "variable", "unit", "value") %>%
-    aggregate_map(
-      mapping = edgeMap[, c("CountryCode", "RegionCode")],
-      by = c("region" = "CountryCode"))
-
-
-  # Disaggregate to ISO Level (Enduse -> EDGE -> ISO)
+  # Disaggregate to ISO Level
   data <- data %>%
-    mutate(region = gsub("_", "\\.", .data[["region"]])) %>%
+    mutate(region = gsub("_", ".", .data[["region"]])) %>%
     aggregate_map(
-      mapping = euMap[, c("region_evolution", "region_target")],
-      by = c("region" = "region_evolution"),
-      weights = popEDGE %>%
-        select(-"unit", -"variable") %>%
-        rename(weight = "value"),
-      weight_item_col = "region",
-      weight_val_col = "weight",
-      forceAggregation = TRUE
-    ) %>%
-    aggregate_map(
-      mapping = edgeMap[, c("RegionCode", "CountryCode")],
-      by = c("region" = "RegionCode"),
+      mapping = tcepMap[, c("CountryCode", "RegionCode")],
+      by = c(region = "RegionCode"),
       weights = pop %>%
-        select(-"unit", -"variable", -"model", -"scenario") %>%
-        rename(weight = "value"),
+        rename(weight_val_col = "value"),
       weight_item_col = "region",
-      weight_val_col = "weight",
       forceAggregation = TRUE
     ) %>%
     select("region", "period", "variable", "value") %>%
@@ -94,8 +80,5 @@ convertTCEP <- function(x) {
     as.magpie()
 
   return(data)
-
-
-
 
 }

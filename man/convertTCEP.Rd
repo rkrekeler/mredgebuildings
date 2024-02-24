@@ -16,5 +16,5 @@ magpie object
 Convert TCEP data base
 }
 \author{
-Hagen Tockhorn
+Hagen Tockhorn, Robin Hasse
 }
