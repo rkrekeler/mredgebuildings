@@ -40,17 +40,18 @@ calcFEbyEUEC <- function() {
 
 
   # ETP mapping
-  regmapping <- toolGetMapping(name = "regionmappingIEA_ETP.csv",
-                               type = "regional",
-                               where = "mappingfolder")
+  regmapping <- toolGetMapping(name  = "regionmappingIEA_ETP.csv",
+                               type  = "regional",
+                               where = "mredgebuildings")
 
 
 
   # PARAMETERS -----------------------------------------------------------------
 
   # Enduse-Carrier combinations which will be systematically excluded
-  exclude <- toolGetMapping("excludeEnduseCarrier.csv", "sectoral",
-                            "mredgebuildings")
+  exclude <- toolGetMapping(name  = "excludeEnduseCarrier.csv",
+                            type  = "sectoral",
+                            where = "mredgebuildings")
 
 
 

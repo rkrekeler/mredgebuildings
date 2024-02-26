@@ -63,11 +63,6 @@ calcPFUDB <- function() {
                          aggregate = FALSE)  %>%
     as.quitte()
 
-  etpEU <- calcOutput("Shares",
-                      subtype = "enduse_thermal",
-                      feOnly = TRUE,
-                      aggregate = FALSE) %>%
-              as.quitte()
 
   feOdyssee <- calcOutput("ShareOdyssee",
                           subtype = "enduse_carrier",
@@ -79,7 +74,7 @@ calcPFUDB <- function() {
   # ETP mapping
   regmapping <- toolGetMapping("regionmappingIEA_ETP.csv",
                                "regional",
-                               "mappingfolder")
+                               "mredgebuildings")
 
 
 
@@ -108,7 +103,7 @@ calcPFUDB <- function() {
   # Aggregate uses from PFU to appliances_light and keep the df as Non-thermal
   pfuNonTherm <- pfu %>%
     filter(.data[["enduse"]] != "Low-T heat") %>%
-    aggregate_map(mapping = enduseMapping[1:3],
+    aggregate_map(mapping = enduseMapping,
                   by = "enduse",
                   variable = "enduse",
                   forceAggregation = TRUE)
@@ -133,20 +128,60 @@ calcPFUDB <- function() {
                               .data[["EEAReg"]])) %>%
     select(region = "CountryCode", "regionAgg")
 
-  etpEU <- select(etpEU, "region", "period", "enduse", "value") %>%
-    left_join(regmapping, by = "region")
+
+  # Reduce the data frames dimensions to the minimal set
+  pfu <- pfu %>%
+    semi_join(sharesEU, by = c("region", "period"))
+  sharesEU <- sharesEU %>%
+    semi_join(pfu, by = c("region", "period"))
+
+  # reaggregate end use shares to ETP regions
+  # TODO: This aggregation should be done within calcOutput but for this, we
+  # need a full region mapping that doesn't require the post processing done
+  # above. I don't know yet, why in come cases, there are different values in
+  # one region but we take the mean in this case. To be checked.
+  sharesEU <- sharesEU %>%
+    left_join(regmapping, by = "region") %>%
+    group_by(across(all_of(c("regionAgg", "period", "enduse")))) %>%
+    summarise(value = mean(.data[["value"]]), .groups = "drop") %>%
+    rename(region = "regionAgg")
 
 
   # Disaggregate Low-T Heat into different enduses
-  pfuTherm <- pfu %>%
+  pfuThermFE <- pfu %>%
     filter(.data[["enduse"]] == "Low-T heat") %>%
     select(-"enduse") %>%
-    rename(variable = "carrier") %>%
+    filter(unit == "fe") %>%
     toolDisaggregate(sharesEU,
-                     etpEU,
-                     exclude = exclude,
-                     dataReplace = feOdyssee) %>%
+                     exclude,
+                     feOdyssee,
+                     regmapping) %>%
     select(colnames(pfuNonTherm))
+
+  # replace with existing disaggregated fe values
+  pfuThermFE <- pfuThermFE %>%
+    left_join(feOdyssee %>%
+                rename(oldvalue = "value"),
+              by = c("region", "period", "carrier", "enduse")) %>%
+    mutate(value = ifelse(is.na(.data[["oldvalue"]]),
+                          .data[["value"]],
+                          .data[["oldvalue"]])) %>%
+    select(-"oldvalue")
+
+  # Use carrier-enduse distribution to apply on useful energy
+  shares <- pfuThermFE %>%
+    group_by(across(all_of(c("region", "period")))) %>%
+    mutate(share = proportions(.data[["value"]])) %>%
+    select(-"value", -"unit")
+
+  pfuTherm <- pfu %>%
+    filter(.data[["enduse"]] == "Low-T heat",
+           .data[["unit"]]   == "ue") %>%
+    select(-"enduse") %>%
+    left_join(shares, by = c("region", "period", "carrier")) %>%
+    mutate(value = .data[["value"]] * .data[["share"]]) %>%
+    select(-"share") %>%
+    rbind(pfuThermFE)
 
 
   # Join Non-Thermal and Thermal Part
@@ -167,13 +202,13 @@ calcPFUDB <- function() {
 
   # OUTPUT ---------------------------------------------------------------------
 
-  pfuRes <- pfuRes %>%
-    as.data.frame() %>%
+  result <- pfuRes %>%
+    as.quitte() %>%
     as.magpie()
 
 
   data <- list(
-    x = pfuRes,
+    x = result,
     weight = NULL,
     unit = "EJ",
     min = 0,

@@ -32,6 +32,7 @@
 #' @importFrom quitte interpolate_missing_periods
 #' @importFrom dplyr %>% .data mutate group_by ungroup across all_of left_join
 #'   semi_join group_modify select summarise filter anti_join
+#' @importFrom tidyr pivot_wider
 #' @export
 
 toolDisaggregate <- function(data,
