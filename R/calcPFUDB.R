@@ -71,34 +71,42 @@ calcPFUDB <- function() {
     as.quitte()
 
 
+  sharesOdyssee <- calcOutput("ShareOdyssee",
+                          subtype = "enduse_carrier",
+                          feOnly = FALSE,
+                          aggregate = FALSE) %>%
+    as.quitte()
+
+
+
+  # Mappings
+
   # ETP mapping
   regmapping <- toolGetMapping("regionmappingIEA_ETP.csv",
                                "regional",
                                "mredgebuildings")
 
+  # Enduse Mappings
+  enduseMapping <- toolGetMapping("enduseMap_PFUDB.csv", "sectoral",
+                                  "mredgebuildings")
+
 
 
   # PROCESS DATA ---------------------------------------------------------------
 
-  # Generalize Heat Carriers
-  pfu <- sumDf(pfu, c("Heat", "Geothermal", "Solar"), "heat")
-
-
-  # Map Carrier Names and Convert Units
   pfu <- pfu %>%
+    # Generalize Heat Carriers
+    sumDf(c("Heat", "Geothermal", "Solar"), "heat") %>%
+
+    # Map Carrier Names and Convert Units
     revalue.levels(carrier = carriersnames) %>%
     factor.data.frame() %>%
-    mutate(value = replace_na(.data[["value"]], 0))
+    mutate(value = replace_na(.data[["value"]], 0)) %>%
+    select("region", "period", "unit", "carrier", "enduse", "value")
 
-
-  pfu <- select(pfu, -"model", -"scenario", -"variable")
 
 
   ## Disaggregate into Thermal and Non-Thermal Part ====
-
-  # Enduse Mappings
-  enduseMapping <- toolGetMapping("enduseMap_PFUDB.csv", "sectoral",
-                                  "mredgebuildings")
 
   # Aggregate uses from PFU to appliances_light and keep the df as Non-thermal
   pfuNonTherm <- pfu %>%
@@ -122,11 +130,29 @@ calcPFUDB <- function() {
                            "refrigerators",
                            as.character(.data[["enduse"]])))
 
+  # prepare regional mapping
   regmapping <- regmapping %>%
     mutate(regionAgg = ifelse(.data[["EEAReg"]] == "rest",
                               .data[["OECD"]],
                               .data[["EEAReg"]])) %>%
     select(region = "CountryCode", "regionAgg")
+
+  # Extract regions with existing disaggregated FE shares
+  replaceRegs <- sharesOdyssee %>%
+    filter(!is.na(.data[["value"]])) %>%
+    pull("region") %>%
+    droplevels() %>%
+    unique()
+
+  # re-aggregate Odyssee shares to carrier level
+  sharesOdyssee <- sharesOdyssee %>%
+    filter(.data[["region"]] %in% replaceRegs) %>%
+    mutate(value = ifelse(is.na(.data[["value"]]),
+                          0,
+                          .data[["value"]])) %>%
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    mutate(value = proportions(.data[["value"]])) %>%
+    ungroup()
 
 
   # Reduce the data frames dimensions to the minimal set
@@ -147,36 +173,46 @@ calcPFUDB <- function() {
     rename(region = "regionAgg")
 
 
+  # data excluded from disaggregation
+  pfuThermExclude <- pfu %>%
+    # exclude regions with existing disaggregated shares
+    filter(.data[["enduse"]] == "Low-T heat",
+           .data[["region"]] %in% replaceRegs) %>%
+    select(-"enduse") %>%
+
+    # disaggregate with existing shares
+    left_join(sharesOdyssee %>%
+                select("region", "period", "carrier", "enduse", "value") %>%
+                rename(share = "value"),
+              by = c("region", "period", "carrier")) %>%
+    mutate(value = .data[["value"]] * .data[["share"]]) %>%
+    select(-"share")
+
+
+
   # Disaggregate Low-T Heat into different enduses
   pfuThermFE <- pfu %>%
-    filter(.data[["enduse"]] == "Low-T heat") %>%
+    filter(.data[["enduse"]] == "Low-T heat",
+           !(.data[["region"]] %in% replaceRegs),
+           unit == "fe") %>%
     select(-"enduse") %>%
-    filter(unit == "fe") %>%
     toolDisaggregate(sharesEU,
                      exclude,
                      feOdyssee,
                      regmapping) %>%
     select(colnames(pfuNonTherm))
 
-  # replace with existing disaggregated fe values
-  pfuThermFE <- pfuThermFE %>%
-    left_join(feOdyssee %>%
-                rename(oldvalue = "value"),
-              by = c("region", "period", "carrier", "enduse")) %>%
-    mutate(value = ifelse(is.na(.data[["oldvalue"]]),
-                          .data[["value"]],
-                          .data[["oldvalue"]])) %>%
-    select(-"oldvalue")
-
   # Use carrier-enduse distribution to apply on useful energy
   shares <- pfuThermFE %>%
-    group_by(across(all_of(c("region", "period")))) %>%
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
     mutate(share = proportions(.data[["value"]])) %>%
     select(-"value", -"unit")
 
+  # disaggregate useful energy with calculated shares
   pfuTherm <- pfu %>%
     filter(.data[["enduse"]] == "Low-T heat",
-           .data[["unit"]]   == "ue") %>%
+           .data[["unit"]]   == "ue",
+           !(.data[["region"]] %in% replaceRegs)) %>%
     select(-"enduse") %>%
     left_join(shares, by = c("region", "period", "carrier")) %>%
     mutate(value = .data[["value"]] * .data[["share"]]) %>%
@@ -185,7 +221,7 @@ calcPFUDB <- function() {
 
 
   # Join Non-Thermal and Thermal Part
-  pfuRes <- rbind(pfuTherm, pfuNonTherm)
+  pfuRes <- rbind(pfuTherm, pfuThermExclude, pfuNonTherm)
 
 
   # Include "refrigerators" in "appliances_light"
