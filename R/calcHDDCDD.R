@@ -1,7 +1,7 @@
 #' calculate HDD and CDD based on outdoor/indoor temperature difference
 #'
 #' @description heating and cooling degree days based on raw outside temperature
-#'   or bais-adjusted internal temperature (BAIT), driver for space heating and
+#'   or bias-adjusted internal temperature (BAIT), driver for space heating and
 #'   cooling demand in buildings
 #'
 #' @param mappingFile data.frame containing input data file names and directories
