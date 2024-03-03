@@ -4,13 +4,13 @@
 #'   or bias-adjusted internal temperature (BAIT), driver for space heating and
 #'   cooling demand in buildings
 #'
-#' @param mappingFile data.frame containing input data file names and directories
-#' @param bait specify use of raw temperature or BAIT
-#' @param multiscen specify if mappingFile covers more than one scenario
+#' @param mappingFile file name of sectoral mapping containing input data file names and directories
+#' @param bait boolean, use BAIT instead of raw temperature
+#' @param multiscen boolean, does \code{mappingFile} cover more than one scenario?
 #'
 #' @return magpie object of heating and cooling degree days
 #'
-#' @author Robin Krekeler, Hagen Tockhorn
+#' @author Robin Hasse, Hagen Tockhorn
 #' @examples
 #'
 #' \dontrun{
@@ -18,14 +18,14 @@
 #' }
 #'
 #' @importFrom madrat getConfig
-#' @importFrom raster cellStats
+#' @importFrom raster cellStats xyFromCell ncell
 #' @importFrom ncdf4 nc_open
 #' @importFrom tidyr %>%
 #' @importFrom dplyr mutate
 #' @importFrom rlang .data
 #' @importFrom pracma integral2
 #' @importFrom stringr str_sub
-#' @importFrom terra app nlyr tapp subset rast classify time
+#' @importFrom terra app nlyr tapp subset rast classify time setGDALconfig
 
 
 calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
@@ -40,14 +40,14 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
       filename <- gsub(".nc|.nc4", "", filename)
     }
 
-    if (bait) {
-      dStart <- as.Date(stringr::str_sub(filename, -17, -10),
+    if (isTRUE(bait)) {
+      dStart <- as.Date(str_sub(filename, -17, -10),
                         format = "%Y%m%d")
       n <- nlyr(r)
       dates <- seq.Date(dStart, by = "day", length.out = n)
     }
     else {
-      yStart <- stringr::str_sub(filename, -9, -6)
+      yStart <- str_sub(filename, -9, -6)
       dStart <- as.Date(paste0(yStart, "-1-1"))
       n <- nlyr(r)
 
@@ -62,7 +62,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
 
   # prepare input for calcBAIT()
   calcBaitInput <- function(frsds=NULL, fsfc=NULL, fhuss=NULL, baitInput=NULL, mean=FALSE) {
-    if(mean) {
+    if (isTRUE(mean)) {
       # optional: calculate daily means over years to fill missing data
       baitInputMean <- sapply(
         names(baitInput), function(var) {
@@ -100,7 +100,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
       daysFill  <- unique(substr(datesFill, 6, 11))
 
       datesKeep <- intersect(dates_b, dates_t)      # dates to keep
-      keep <- ifelse(length(datesKeep) > 0, TRUE, FALSE)
+      keep <- length(datesKeep) > 0
 
       if (keep) {
         tmp <- subset(tmp, datesKeep)
@@ -133,7 +133,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
 
 
       if (!identical(names(tmp), names(temp))) {
-        return(print("Warning: Dates of Temperature and BAIT Input Data are not aligned."))
+        warning("Dates of Temperature and BAIT Input Data are not aligned.")
       }
       return(tmp)
       },
@@ -157,12 +157,13 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
                        t = c(16))}
 
     print(names(params))
-    if      (type == "s") {return(params[[1]] + params[[2]]*t)}
-    else if (type == "w") {return(params[[1]] + params[[2]]*t)}
-    else if (type == "h") {return(exp(params[[1]] + params[[2]]*t))}
-    else if (type == "t") {return(params[[1]])}
-
-    else {print("No valid parameter type specified.")}
+    return(switch(type,
+      s = {params[[1]] + params[[2]] * t},
+      w = {params[[1]] + params[[2]] * t},
+      h = {exp(params[[1]] + params[[2]] * t)},
+      t = {params[[1]]},
+      error("No valid parameter type specified.")
+    ))
   }
 
 
@@ -458,11 +459,10 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
 
                   rname <- paste0(fSplit[[1]], "_", y, "_", fSplit[[4]], "_", typeDD, "_", t)
 
-                  if (bait) {rname <- paste0(rname, "_bait.nc")}
-                  else {rname <- paste0(rname, ".nc")}
+                  rname <- paste0(rname, if (bait) "_bait" else "", ".nc")
 
 
-                  terra::writeRaster(hddcdd_save,
+                  writeRaster(hddcdd_save,
                                      paste0("/p/tmp/hagento/output/rasterdata/", rname),
                                      overwrite = TRUE)
                 }
@@ -542,7 +542,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
   plotRaster <- function(r) {
     library("ggplot2")
     r_map <- stack(as.data.frame(raster::getValues(r)))
-    coords <- raster::xyFromCell(r, seq_len(raster::ncell(r)))
+    coords <- xyFromCell(r, seq_len(ncell(r)))
     names(r_map) <- c('value', 'variable')
     r_map <- cbind(coords, r_map)
     ggplot(r_map) +
@@ -556,12 +556,12 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
 
   # PARAMETERS------------------------------------------------------------------
 
-  terra::setGDALconfig(c("BIGTIFF = YES"))
+  setGDALconfig(c("BIGTIFF = YES"))
 
 
   # threshold temperature for heating and cooling [C]
   # NOTE: Staffel gives global average of T_heat = 14, T_cool = 20
-  # t_lim <- list("HDD" = seq(12, 18), "CDD" = seq(20, 26))
+  # t_lim <- list("HDD" = seq(12, 22), "CDD" = seq(20, 26))
   t_lim <- list("HDD" = seq(14), "CDD" = seq(22))
 
   # standard deviations for temperature distributions
@@ -592,6 +592,8 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
 
   # The blending parameters for the blending of BAIT and raw temperature are like-wise
   # taken from the paper.
+  # At bLower, we consider only BAIT. For higher temperatures, we assume a mix with the ambient
+  # temperature reaching the highest contribution of bMax at bUpper following a sigmoid function
   bLower <- 15
   bUpper <- 23
   bMax   <- 0.5
