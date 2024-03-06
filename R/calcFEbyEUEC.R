@@ -8,7 +8,7 @@
 #' @author Hagen Tockhorn, Robin Hasse
 #'
 #' @importFrom dplyr mutate semi_join right_join left_join as_tibble filter
-#'   select %>% .data
+#'   select %>% .data pull
 #' @importFrom madrat toolCountryFill calcOutput toolGetMapping
 #' @importFrom quitte as.quitte
 #' @importFrom magclass as.magpie
@@ -93,12 +93,12 @@ calcFEbyEUEC <- function() {
   sharesEU <- sharesEU %>%
     left_join(regmapping, by = "region") %>%
     group_by(across(all_of(c("regionAgg", "period", "enduse")))) %>%
-    summarise(value = mean(.data[["value"]]), .groups = "drop") %>%
+    summarise(value = mean(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
     rename(region = "regionAgg")
 
   # Disaggregate FE with EU/EC Shares
   ieaIODis <- ieaIO %>%
-    select(-"model", -"scenario", -"unit") %>%
+    select("region", "period", "carrier", "value") %>%
     mutate(unit = "fe") %>%
     toolDisaggregate(enduseShares  = sharesEU,
                      exclude       = exclude,
