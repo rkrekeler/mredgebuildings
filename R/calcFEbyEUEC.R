@@ -59,13 +59,24 @@ calcFEbyEUEC <- function() {
 
   # Reduce the data frames dimensions to the minimal set
   ieaIO <- ieaIO %>%
-    semi_join(sharesEU, by = c("region", "period"))
+    semi_join(sharesEU, by = c("region", "period")) %>%
+    rename(carrier = "variable")
   sharesEU <- sharesEU %>%
     semi_join(ieaIO, by = c("region", "period"))
 
   # Prepare toolDisaggregate Input
+
+  # Extract regions with existing disaggregated FE shares
+  replaceRegs <- feOdyssee %>%
+    filter(!is.na(.data[["value"]])) %>%
+    pull("region") %>%
+    droplevels() %>%
+    unique()
+
   feOdyssee <- feOdyssee %>%
-    select("region", "period", "carrier", "enduse", "value")
+    select("region", "period", "carrier", "enduse", "value") %>%
+    mutate(unit = "fe") %>%
+    semi_join(ieaIO, by = c("region", "period", "carrier"))
 
   # Use EEA regions but split rest into OECD/non-OECD
   regmapping <- regmapping %>%
@@ -86,14 +97,20 @@ calcFEbyEUEC <- function() {
     rename(region = "regionAgg")
 
   # Disaggregate FE with EU/EC Shares
-  ieaIO <- ieaIO %>%
+  ieaIODis <- ieaIO %>%
     select(-"model", -"scenario", -"unit") %>%
     mutate(unit = "fe") %>%
-    rename(carrier = "variable") %>%
-    toolDisaggregate(sharesEU,
-                     exclude,
-                     feOdyssee,
-                     regmapping)
+    toolDisaggregate(enduseShares  = sharesEU,
+                     exclude       = exclude,
+                     dataDisagg    = feOdyssee,
+                     regionMapping = regmapping) %>%
+    select("region", "period", "unit", "carrier", "enduse", "value")
+
+
+  data <- rbind(ieaIODis %>%
+                  filter(!(.data[["region"]] %in% replaceRegs)),
+                feOdyssee %>%
+                  filter(.data[["region"]] %in% replaceRegs))
 
 
 

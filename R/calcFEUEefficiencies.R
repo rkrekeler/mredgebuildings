@@ -117,9 +117,12 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
     left_join(corrFactors, by = c("region", "period", "enduse", "carrier")) %>%
     mutate(value = ifelse(is.na(.data[["factor"]]),
                           .data[["pred"]],
-                          ifelse(is.na(.data[["efficiency"]]),
-                                 .data[["pred"]] * .data[["factor"]],
-                                 .data[["efficiency"]])))
+                          ifelse(is.infinite(.data[["factor"]]),
+                                 .data[["pred"]],
+                                 ifelse(is.na(.data[["efficiency"]]),
+                                        .data[["pred"]] * .data[["factor"]],
+                                        .data[["efficiency"]]))))
+
 
 
   # Trim Dataframe

@@ -109,7 +109,7 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
     # aggregate residential and services sector
     odyssee <- odyssee %>%
       group_by(across(all_of(c("region", "period", "carrier", "enduse")))) %>%
-      summarise(value = sum(.data[["value"]])) %>%
+      summarise(value = sum(.data[["value"]], na.rm = TRUE)) %>%
       as.magpie() %>%
       toolCountryFill(verbosity = 2)
 
