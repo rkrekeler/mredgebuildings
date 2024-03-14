@@ -145,7 +145,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
   # READ-IN DATA----------------------------------------------------------------
 
   # list of files that are processed
-  files <- toolGetMapping(mappingFile, type = "sectoral", where = "mappingfolder") %>%
+  files <- toolGetMapping(mappingFile, type = "sectoral", where = "mredgebuildings") %>%
     filter(variable != "")
 
   # cells -> country mask
@@ -169,7 +169,11 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
                      convert = FALSE)
 
   if (bait) {
-    baitPars <- calcOutput("BAITpars", aggregate = FALSE, model = model)
+    baitPars <- calcOutput("BAITpars",
+                           aggregate = FALSE,
+                           model     = model,
+                           cacheDir  = cacheDir)
+
     names(baitPars) <- parNames
   }
 
@@ -499,7 +503,10 @@ calcBAIT <- function(baitInput, tasData, weight=NULL, params=NULL) {
   print("calc bait")
   bait <- tasData + weight[["wRSDS"]]*s + weight[["wSFC"]]*w + weight[["wHUSS"]]*h*t
 
+  # smooth bait
   bait <- smooth(bait, weight)
+
+  # # blend bait
   bait <- blend(bait, tasData, weight)
 
   rm(baitInput, solar, wind, hum, s, w, h, t, bait)
@@ -662,12 +669,15 @@ calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd=5, tlimStd=5) {
 #' @importFrom terra classify tapp
 
 calcCellHDDCDD <- function(temp, typeDD, tlim, factors) {
+  browser()
   # extract years
   dates <- names(temp)
 
   # add tolerance of 0.04K to avoid machine precision errors
+  factors <- factors[factors$typeDD == typeDD, ]
+
   factors <- factors %>%
-    filter(.data[["typeDD"]] == typeDD, .data[["T_lim"]] == tlim) %>%
+    filter(.data[["T_lim"]] == tlim) %>%
     dplyr::reframe(from = .data[["T_amb_K"]] - 0.049,
                    to = .data[["T_amb_K"]] + 0.049,
                    becomes = .data[["factor"]]) %>%
@@ -786,10 +796,12 @@ calcStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
     temp <- temp + 273.15   # [K]
   }
 
+  # round and assign dates
   temp <- terra::round(temp, digits = 1)
   names(temp) <- dates
 
   print("Calculating HDD/CDDs per cell.")
+
 
   fSplit <- str_split(ftas, "_") %>% unlist()
 
@@ -801,27 +813,19 @@ calcStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
         do.call(
           "rbind", lapply(
             tlim[[typeDD]], function(t) {
+              browser()
               hddcddAgg <- calcCellHDDCDD(temp, typeDD, t, factors)
 
-              # save intermediate results
-              decades <- c(as.numeric(gsub("y", "", names(hddcddAgg))) %% 10 == 0)
-              if (any(decades)) {
-                hddcdd_save <- hddcddAgg[[decades]]
+              # write raster files
+              y <- names(hddcddAgg)
 
-                y <- names(hddcddAgg)[as.numeric(gsub("y", "", names(hddcddAgg))) %% 10 == 0]
+              rname <- paste0(fSplit[[1]], "_", y, "_", fSplit[[4]], "_", typeDD, "_", t)
 
-                y <- gsub("y", "", y) %>%
-                  paste(collapse = "-")
+              rname <- paste0(rname, if (bait) "_bait" else "", ".nc")
 
-                rname <- paste0(fSplit[[1]], "_", y, "_", fSplit[[4]], "_", typeDD, "_", t)
-
-                rname <- paste0(rname, if (bait) "_bait" else "", ".nc")
-
-
-                writeRaster(hddcdd_save,
-                            paste0("/p/tmp/hagento/output/rasterdata/", rname),
-                            overwrite = TRUE)
-              }
+              terra::writeCDF(hddcddAgg,
+                              file.path("/p/tmp/hagento/output/rasterdata", fSplit[[1]], rname),
+                              overwrite = TRUE)
 
               hddcddAgg <- hddcddAgg %>%
                 aggCells(pop, countries) %>%
