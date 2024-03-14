@@ -286,8 +286,8 @@ toolDisaggregate <- function(data,
 
   # first look for exact solution
   # If there is none, find one that matches end use quantities closely
-  # for (precision in c("exact", "close")) {
-    for (precision in c("close")) {
+  for (precision in c("exact", "close")) {
+    # for (precision in c("close")) {
 
     # BUILD MATRICES -----------------------------------------------------------
 

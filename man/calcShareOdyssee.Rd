@@ -4,10 +4,15 @@
 \alias{calcShareOdyssee}
 \title{Share of energy carriers or end uses in historic buildings demand}
 \usage{
-calcShareOdyssee(subtype = c("enduse", "carrier", "enduse_carrier"))
+calcShareOdyssee(
+  subtype = c("enduse", "carrier", "enduse_carrier"),
+  feOnly = FALSE
+)
 }
 \arguments{
 \item{subtype}{Character, dimension names, level of shares.}
+
+\item{feOnly}{if TRUE, output is absolute FE values}
 }
 \value{
 MAgPIE object with historic shares

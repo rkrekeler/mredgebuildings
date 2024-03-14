@@ -2,16 +2,32 @@
 % Please edit documentation in R/calcHDDCDD.R
 \name{calcHDDCDD}
 \alias{calcHDDCDD}
-\title{HDD and CDD scenario and historic data}
+\title{calculate HDD and CDD based on outdoor/indoor temperature difference}
 \usage{
-calcHDDCDD(tlimit = 18)
+calcHDDCDD(mappingFile, bait = FALSE, multiscen = FALSE)
 }
 \arguments{
-\item{tlimit}{Temperature threshold for computing HDD and CDD}
+\item{mappingFile}{data.frame containing input data file names and directories}
+
+\item{bait}{specify use of raw temperature or BAIT}
+
+\item{multiscen}{specify if mappingFile covers more than one scenario}
+}
+\value{
+magpie object of heating and cooling degree days
 }
 \description{
-smoothes the HDD and CDD scenario data
+heating and cooling degree days based on raw outside temperature
+or bais-adjusted internal temperature (BAIT), driver for space heating and
+cooling demand in buildings
+}
+\examples{
+
+\dontrun{
+calcHDDCDD()
+}
+
 }
 \author{
-Antoine Levesque
+Robin Krekeler, Hagen Tockhorn
 }

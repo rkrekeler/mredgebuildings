@@ -25,10 +25,16 @@ calcFEbyEUEC <- function() {
 
 
   # EU Shares
+  # sharesEU <- calcOutput("Shares",
+  #                        subtype = "enduse_nonthermal",
+  #                        aggregate = FALSE) %>%
+  #             as.quitte()
+
   sharesEU <- calcOutput("Shares",
                          subtype = "enduse_nonthermal",
-                         aggregate = FALSE) %>%
-              as.quitte()
+                         aggregate = TRUE,
+                         regionmapping = "regionmappingEUshares.csv") %>%
+    as.quitte()
 
 
   # FE EU Data
@@ -36,13 +42,22 @@ calcFEbyEUEC <- function() {
                           subtype = "enduse_carrier",
                           feOnly = TRUE,
                           aggregate = FALSE) %>%
-    as.quitte()
+  as.quitte()
+
+  # feOdyssee <- read.csv("../EUECshares_EDGE.csv")
 
 
   # ETP mapping
-  regmapping <- toolGetMapping(name  = "regionmappingIEA_ETP.csv",
+  regmapping <- toolGetMapping(name  = "regionmappingEUshares.csv",
                                type  = "regional",
-                               where = "mredgebuildings")
+                               where = "mredgebuildings") %>%
+    select("region", "regionAgg")
+
+  # regmapping <- toolGetMapping(name  = "regionmappingEDGE-EUR_ETP.csv",
+  #                              type  = "regional",
+  #                              where = "mredgebuildings") %>%
+  #   rename(region = "CountryCode",
+  #          regionAgg = "RegionCodeEUR_ETP")
 
 
 
@@ -57,14 +72,14 @@ calcFEbyEUEC <- function() {
 
   # PROCESS DATA ---------------------------------------------------------------
 
-  # Reduce the data frames dimensions to the minimal set
-  ieaIO <- ieaIO %>%
-    semi_join(sharesEU, by = c("region", "period")) %>%
-    rename(carrier = "variable")
   sharesEU <- sharesEU %>%
-    semi_join(ieaIO, by = c("region", "period"))
+    select("region", "period", "enduse", "value")
 
-  # Prepare toolDisaggregate Input
+  ieaIO <- ieaIO %>%
+    rename(carrier = "variable")
+
+
+  #--- Prepare toolDisaggregate Input
 
   # Extract regions with existing disaggregated FE shares
   replaceRegs <- feOdyssee %>%
@@ -78,23 +93,6 @@ calcFEbyEUEC <- function() {
     mutate(unit = "fe") %>%
     semi_join(ieaIO, by = c("region", "period", "carrier"))
 
-  # Use EEA regions but split rest into OECD/non-OECD
-  regmapping <- regmapping %>%
-    mutate(regionAgg = ifelse(.data[["EEAReg"]] == "rest",
-                              .data[["OECD"]],
-                              .data[["EEAReg"]])) %>%
-    select(region = "CountryCode", "regionAgg")
-
-  # reaggregate end use shares to ETP regions
-  # TODO: This aggregation should be done within calcOutput but for this, we
-  # need a full region mapping that doesn't require the post processing done
-  # above. I don't know yet, why in come cases, there are different values in
-  # one region but we take the mean in this case. To be checked.
-  sharesEU <- sharesEU %>%
-    left_join(regmapping, by = "region") %>%
-    group_by(across(all_of(c("regionAgg", "period", "enduse")))) %>%
-    summarise(value = mean(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
-    rename(region = "regionAgg")
 
   # Disaggregate FE with EU/EC Shares
   ieaIODis <- ieaIO %>%

@@ -106,27 +106,16 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
       rename(carrier = "variable")
   }
 
+  # Correct precision errors
+  eps <- 1e-5
+  etpFilter <- etpFilter %>%
+    mutate(value = ifelse(.data[["value"]] == 0,
+                          eps,
+                          .data[["value"]]))
 
-  # If specified, return only energy quantities
-  if (feOnly) {
-    feData <- etpFilter %>%
-      droplevels() %>%
-      quitte::factor.data.frame() %>%
-      as.quitte() %>%
-      mutate(value = .data[["value"]] * PJ2EJ,
-             unit = "EJ") %>%
-      select("region", "period", "unit", shareOf, "value") %>%
-      as.magpie()
 
-    return(list(
-      x = feData,
-      weight = NULL,
-      unit = "EJ",
-      description = "FE of carrier or end use in buildings demand in EJ"
-    ))
-
-  } else {
-    # Or return shares
+  # If specified, return energy shares
+  if (isFALSE(feOnly)) {
 
     # Global Shares
     shareGlobal <- etpFilter %>%
@@ -163,9 +152,68 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
       summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
       group_by(across(all_of(c("period", head(shareOf, -1))))) %>%
       mutate(value = .data[["value"]] / sum(.data[["value"]]))
+  }
+
+
+  # CORRECTIONS ----------------------------------------------------------------
+
+    if (subtype == "enduse") {
+
+      # Taken from EDGE-B by Antoine Levesque:
+      # "ETP electricity demand is twice as high (!) as in the IEA data,
+      # I reduce the appliances and lighting and cooling demand shares as a result."
+
+      if (isTRUE(feOnly)) {
+        share <- etpFilter %>%
+          droplevels() %>%
+          quitte::factor.data.frame()
+      }
+
+      shareCorr <- share %>%
+        mutate(value = ifelse(.data[["region"]] == "MEX" &
+                                .data[["enduse"]] %in% c("appliances", "lighting"),
+                              .data[["value"]] *  0.6,
+                              .data[["value"]])) %>%
+        mutate(value = ifelse(.data[["region"]] == "MEX" &
+                                .data[["enduse"]] %in% c("space_cooling"),
+                              .data[["value"]] *  0.6,
+                              .data[["value"]])) %>%
+        mutate(value = ifelse(.data[["region"]] %in% c("RUS", "IND") &
+                                .data[["enduse"]] %in% c("appliances", "lighting", "space_cooling"),
+                              .data[["value"]]  * 0.85,
+                              .data[["value"]])) %>%
+        mutate(value = ifelse(.data[["region"]] == "USA" &
+                                .data[["enduse"]] %in% c("appliances", "lighting"),
+                              .data[["value"]]  * 0.85,
+                              .data[["value"]]))
+
+      if (isFALSE(feOnly)) {
+        # re-normalize data
+        share <- shareCorr %>%
+          group_by(across(all_of(c("region", "period")))) %>%
+          mutate(value = proportions(.data[["value"]])) %>%
+          ungroup()
+      }
+    }
+
 
 
   # OUTPUT ---------------------------------------------------------------------
+
+    # return only FE data
+    if (isTRUE(feOnly)) {
+      feData <- shareCorr %>%
+        as.quitte() %>%
+        mutate(value = .data[["value"]] * PJ2EJ,
+               unit = "EJ") %>%
+        select("region", "period", "unit", shareOf, "value") %>%
+        as.magpie()
+
+      return(list(x = feData,
+                  unit = "EJ",
+                  description = "FE of carrier or end use in buildings demand in EJ"))
+    }
+
 
     # Convert to Magpie Object
     share <- share %>%
@@ -186,5 +234,5 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
                 min = 0,
                 max = 1,
                 description = "Share of carrier or end use in buildings demand"))
-  }
 }
+
