@@ -25,11 +25,12 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
 
   # READ-IN DATA----------------------------------------------------------------
 
-  files <- toolGetMapping("baitregression-files.csv", type = "sectoral") %>%
+  files <- toolGetMapping("baitregression-files_test.csv", type = "sectoral") %>%
     filter(.data[["gcm"]] == model)
 
   vars <- unique(files$variable)
 
+  # nolint start
   data <- sapply(vars, function(v) {
     tmp <- sapply(files[files$variable == v, ]$file,
                   function(f) {
@@ -41,6 +42,7 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
     return(tmp)
   },
   USE.NAMES = TRUE)
+  # nolint end
 
   print("Reading completed")
 
@@ -55,6 +57,7 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
   data$tas <- data$tas - 273.15
 
 
+  # nolint start
   regPars <- sapply(vars[vars != "tas"], function(v) {
     x <- data[["tas"]]
     y <- data[[v]]
@@ -66,6 +69,7 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
   },
   USE.NAMES = FALSE) %>%
     rast()
+  # nolint end
 
 
 

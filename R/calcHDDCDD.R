@@ -14,10 +14,6 @@
 #'
 #' @author Robin Hasse, Hagen Tockhorn
 #'
-#' \dontrun{
-#' calcHDDCDD()
-#' }
-#'
 #' @importFrom madrat toolGetMapping readSource calcOutput toolCountryFill
 #' @importFrom tidyr %>%
 #' @importFrom dplyr mutate
@@ -277,7 +273,7 @@ calcHDDCDD <- function(mappingFile,
 checkDates <- function(baitInput, tasData) {
   datesT <- names(tasData)
 
-  baitInput <- sapply(names(baitInput), function(var) {
+  baitInput <- sapply(names(baitInput), function(var) { #nolint
     # fill missing data with means from previous years
     # NOTE: "temp" and "baitInput" have the same global temporal lower
     #       boundary, since "temp" is the constraining dataset, only
@@ -299,7 +295,7 @@ checkDates <- function(baitInput, tasData) {
     }
 
     if (length(daysFill) > 0) {
-      baitInputMean <- prepBaitInput(mean = TRUE, baitInput = baitInput)
+      baitInputMean <- prepBaitInput(fillWithMean = TRUE, baitInput = baitInput)
 
       # fill up missing dates with yearly-average value for specific day/cell
       baitInputFill <- rast(
@@ -360,7 +356,7 @@ prepBaitInput <- function(frsds = NULL,
 
   if (isTRUE(fillWithMean)) {
     # optional: calculate daily means over years to fill missing data
-    baitInputMean <- sapply(
+    baitInputMean <- sapply( #nolint
       names(baitInput),
       function(var) {
         meanData <- tapp(baitInput[[var]],
@@ -372,11 +368,11 @@ prepBaitInput <- function(frsds = NULL,
     )
     return(baitInputMean)
   } else {
-    input <- list(
+    input <- list( #nolint start
       "rsds" = readSource("ISIMIPbuildings", subtype = frsds, convert = TRUE),
       "sfc"  = readSource("ISIMIPbuildings", subtype = fsfc,  convert = TRUE),
       "huss" = readSource("ISIMIPbuildings", subtype = fhuss, convert = TRUE))
-    return(input)
+    return(input) # nolint end
   }
 }
 
@@ -389,8 +385,7 @@ prepBaitInput <- function(frsds = NULL,
 #' calcBAITpars where the respective variable is correlated with the near-surface
 #' atmospherical temperature.
 #' If no cell-resoluted parameters are given, the globally-meaned parameters from
-#' Staffel et. all 2023 are taken
-#' (see \link{https://doi.org/10.1038/s41560-023-01341-5})
+#' Staffel et. all 2023 are taken (see https://doi.org/10.1038/s41560-023-01341-5).
 #'
 #' @param t raster data on near-surface atmospherical temperature
 #' @param type considered climate variable
@@ -488,7 +483,7 @@ blend <- function(bait, tas, weight) {
 #' near-surface temperature (see \code{\link{blend}}).
 #'
 #' @param baitInput named list containing rsds, sfcwind, huss climate data
-#' @param tas raster data on near-surface atmospherical temperature
+#' @param tasData raster data on near-surface atmospherical temperature
 #' @param weight named list with weights
 #' @param params optional named list with regression parameters from calcBAITpars
 #'
@@ -780,6 +775,7 @@ aggCells <- function(data, weight, mask) {
 #' @param fhuss file name of data on near-surface specific humidity (optional)
 #' @param wBAIT named list containing BAIT weights (optional)
 #' @param params raster object containing regression parameters from \code{calcBAITpars} (optional)
+#' @param rasDir absolute path to directory for saving raster files
 #'
 #' @importFrom raster writeRaster
 #' @importFrom stringr str_split

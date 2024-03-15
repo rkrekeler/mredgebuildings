@@ -14,6 +14,7 @@
 #'
 #' @importFrom stringr str_split
 #' @importFrom terra rast subset aggregate ext res
+#' @importFrom ncdf4 nc_open
 #'
 #' @note
 #' folder structure in inputdata/sources/ISIMIPbuildings is expected to be:
@@ -112,7 +113,7 @@ readISIMIPbuildings <- function(subtype) {
   # region mask
   if (vars[["variable"]] == "countrymask") {
     fpath <- file.path("countrymasks", subtype)
-    varNames <- names(ncdf4::nc_open(fpath)[["var"]])
+    varNames <- names(nc_open(fpath)[["var"]])
     countries <- list()
     for (var in varNames) {
       countries[[var]] <- suppressWarnings(rast(fpath, subds = var))
