@@ -54,9 +54,8 @@ convertISIMIPbuildings <- function(x, subtype) {
 
     if (var == "population") {
       x <- fillDates(x, subtype, pop = TRUE)
-    }
-    # dates have specific length of n = 10
-    else if (!all(nchar(names(x)) == 10)) {
+    } else if (!all(nchar(names(x)) == 10)) {
+      # dates have specific length of n = 10
       x <- fillDates(x, subtype)
     }
 
@@ -66,8 +65,8 @@ convertISIMIPbuildings <- function(x, subtype) {
     }
   }
 
-    return(list(x = x,
-                class = "SpatRaster",
-                unit = unitMapping[var],
-                cache = FALSE))
+  return(list(x = x,
+              class = "SpatRaster",
+              unit = unitMapping[var],
+              cache = FALSE))
 }

@@ -16,8 +16,9 @@
 #' @author Hagen Tockhorn
 #'
 #' @importFrom terra regress rast
-#' @importFrom quitte removeColNa
+#' @importFrom madrat toolGetMapping
 #' @importFrom magclass as.magpie
+#' @importFrom madrat readSource
 
 
 calcBAITpars <- function(model = "GFDL-ESM4") {
@@ -30,10 +31,14 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
   vars <- unique(files$variable)
 
   data <- sapply(vars, function(v) {
-    tmp <- sapply(files[files$variable == v,]$file, function(f) {
-      return(readSource("ISIMIPbuildings", subtype = f))},
-      USE.NAMES = FALSE) %>%
+    tmp <- sapply(files[files$variable == v, ]$file,
+                  function(f) {
+                    return(readSource("ISIMIPbuildings", subtype = f))
+                    },
+                  USE.NAMES = FALSE) %>%
       rast()
+
+    return(tmp)
   },
   USE.NAMES = TRUE)
 
@@ -70,7 +75,4 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
               class = "SpatRaster",
               unit = "(unit)",
               description = "Regression parameters for calcHDDCDD"))
-
 }
-
-

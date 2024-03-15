@@ -7,6 +7,8 @@
 #' @param mappingFile file name of sectoral mapping containing input data file names and directories
 #' @param bait boolean, use BAIT instead of raw temperature
 #' @param multiscen boolean, does \code{mappingFile} cover more than one scenario?
+#' @param rasDir absolute path to directory for saving raster files
+#' @param cacheDir absolute path to directory for pre-calculated BAIT regression parameters
 #'
 #' @return magpie object of heating and cooling degree days
 #'
@@ -24,44 +26,47 @@
 #' @importFrom terra setGDALconfig
 
 
-calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
+calcHDDCDD <- function(mappingFile,
+                       bait = FALSE,
+                       multiscen = FALSE,
+                       rasDir = NULL,
+                       cacheDir = NULL) {
 
   # initialize full calculation
-  makeCalculations <- function(f, m, n, t_lim, countries, pop, hddcddFactor,
-                               bait, wBAIT = NULL, params = NULL, suffix = NULL) {
+  makeCalculations <- function(f, m, n, tLim, countries, pop, hddcddFactor,
+                               bait, wBAIT = NULL, params = NULL, suffix = NULL,
+                               rasDir = NULL) {
 
     if (!is.null(suffix)) {
       ftas <- gsub(".nc",
                    paste0("_", suffix, ".nc"),
-                   f[f$variable == "tas"       & f$gcm == m,][[n, "file"]])
+                   f[f$variable == "tas"       & f$gcm == m, ][[n, "file"]])
 
-      if (bait){
+      if (bait) {
         frsds <- gsub(".nc",
                       paste0("_", suffix, ".nc"),
-                      f[f$variable == "rsds"    & f$gcm == m,][[n, "file"]])
+                      f[f$variable == "rsds"    & f$gcm == m, ][[n, "file"]])
 
         fsfc  <- gsub(".nc",
                       paste0("_", suffix, ".nc"),
-                      f[f$variable == "sfcwind" & f$gcm == m,][[n, "file"]])
+                      f[f$variable == "sfcwind" & f$gcm == m, ][[n, "file"]])
 
         fhuss <- gsub(".nc",
                       paste0("_", suffix, ".nc"),
-                      f[f$variable == "huss"    & f$gcm == m,][[n, "file"]])
+                      f[f$variable == "huss"    & f$gcm == m, ][[n, "file"]])
       }
-    }
-
-    else {
-      ftas  <- f[f$variable == "tas"     & f$gcm == m,][[n, "file"]]
-      frsds <- f[f$variable == "rsds"    & f$gcm == m,][[n, "file"]]
-      fsfc  <- f[f$variable == "sfcwind" & f$gcm == m,][[n, "file"]]
-      fhuss <- f[f$variable == "huss"    & f$gcm == m,][[n, "file"]]
+    } else {
+      ftas  <- f[f$variable == "tas"     & f$gcm == m, ][[n, "file"]]
+      frsds <- f[f$variable == "rsds"    & f$gcm == m, ][[n, "file"]]
+      fsfc  <- f[f$variable == "sfcwind" & f$gcm == m, ][[n, "file"]]
+      fhuss <- f[f$variable == "huss"    & f$gcm == m, ][[n, "file"]]
     }
 
     print(paste("Processing temperature file:", ftas))
 
-    if(bait) {
+    if (bait) {
       hddcddCell <- calcStackHDDCDD(ftas,
-                                    t_lim,
+                                    tLim,
                                     countries,
                                     pop,
                                     hddcddFactor,
@@ -70,15 +75,17 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
                                     fsfc  = fsfc,
                                     fhuss = fhuss,
                                     wBAIT = wBAIT,
-                                    params = params)}
-
-    else {
+                                    params = params,
+                                    rasDir = rasDir)
+    } else {
       hddcddCell <- calcStackHDDCDD(ftas,
-                                    t_lim,
+                                    tLim,
                                     countries,
                                     pop,
                                     hddcddFactor,
-                                    bait)}
+                                    bait,
+                                    rasDir = rasDir)
+    }
     return(hddcddCell)
   }
 
@@ -146,7 +153,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
 
   # list of files that are processed
   files <- toolGetMapping(mappingFile, type = "sectoral", where = "mredgebuildings") %>%
-    filter(variable != "")
+    filter(.data[["variable"]] != "")
 
   # cells -> country mask
   fCM <- file.path(files[files$variable == "CountryMask", "file"])
@@ -164,7 +171,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
   model <- unique(files$gcm[files$variable == "tas"])
 
   # read population data
-  fpop <- files %>% filter(variable == "pop")
+  fpop <- files %>% filter(.data[["variable"]] == "pop")
   pop  <- readSource("ISIMIPbuildings", subtype = fpop$file,
                      convert = FALSE)
 
@@ -180,9 +187,9 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
   hddcdd <- do.call( # file iteration
     "rbind",
     lapply(
-      seq(nrow(filter(files, files$variable == "tas"))),
+      seq_len(nrow(filter(files, files$variable == "tas"))),
       function(n) {
-        split <- files[files$variable == "tas" & files$gcm == model,][[n, "split"]]
+        split <- files[files$variable == "tas" & files$gcm == model, ][[n, "split"]]
 
         # split large raster files to save memory / speed up processing
         if (as.logical(split)) {
@@ -192,32 +199,31 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
               tmp <- makeCalculations(f = files,
                                       m = model,
                                       n = n,
-                                      t_lim = t_lim,
+                                      tLim = tLim,
                                       countries = countries,
                                       pop = pop,
                                       hddcddFactor = hddcddFactor,
                                       bait = bait,
                                       wBAIT = wBAIT,
                                       params = baitPars,
-                                      suffix = suffix)
+                                      suffix = suffix,
+                                      rasDir = rasDir)
               return(tmp)
             }
             )
           )
-        }
-
-        # smaller raster files
-        else {
+        } else {
           hddcddCell <- makeCalculations(f = files,
                                          m = model,
                                          n = n,
-                                         t_lim = t_lim,
+                                         tLim = tLim,
                                          countries = countries,
                                          pop = pop,
                                          hddcddFactor = hddcddFactor,
                                          bait = bait,
                                          wBAIT = wBAIT,
-                                         params = baitPars)
+                                         params = baitPars,
+                                         rasDir = rasDir)
         }
 
         hddcddCell <- hddcddCell %>%
@@ -266,11 +272,10 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
 #'
 #' @return baitInput with congruent time periods w.r.t. tasData
 #'
-#' @importFrom stringr substr
 #' @importFrom terra rast
 
 checkDates <- function(baitInput, tasData) {
-  dates_t <- names(tasData)
+  datesT <- names(tasData)
 
   baitInput <- sapply(names(baitInput), function(var) {
     # fill missing data with means from previous years
@@ -280,12 +285,12 @@ checkDates <- function(baitInput, tasData) {
 
     tmp <- baitInput[[var]]
 
-    dates_b <- names(tmp)
+    datesBait <- names(tmp)
 
-    datesFill <- setdiff(dates_t, dates_b)        # dates to fill up
+    datesFill <- setdiff(datesT, datesBait)        # dates to fill up
     daysFill  <- unique(substr(datesFill, 6, 11))
 
-    datesKeep <- intersect(dates_b, dates_t)      # dates to keep
+    datesKeep <- intersect(datesBait, datesT)      # dates to keep
     keep      <- length(datesKeep) > 0
 
     if (keep) {
@@ -297,20 +302,24 @@ checkDates <- function(baitInput, tasData) {
       baitInputMean <- prepBaitInput(mean = TRUE, baitInput = baitInput)
 
       # fill up missing dates with yearly-average value for specific day/cell
-      baitInputFill <- rast(lapply(
-        daysFill, function(d){
-          idx <- which(grepl(d, stringr::str_sub(datesFill, -5, -1)))
-          r <- rast(replicate(length(idx),
-                              baitInputMean[[var]][[d]]))
-          names(r) <- datesFill[idx]
-          return(r)
-        }
-      )
+      baitInputFill <- rast(
+        lapply(
+          daysFill,
+          function(d) {
+            idx <- which(grepl(d, stringr::str_sub(datesFill, -5, -1)))
+            r   <- rast(replicate(length(idx), baitInputMean[[var]][[d]]))
+            names(r) <- datesFill[idx]
+            return(r)
+          }
+        )
       )
 
       # concatenate data
-      if (keep) {tmp <- rast(list(tmp, baitInputFill))}
-      else      {tmp <- baitInputFill}
+      if (keep) {
+        tmp <- rast(list(tmp, baitInputFill))
+      } else {
+        tmp <- baitInputFill
+      }
 
       # re-order dates
       tmp <- rast(tmp[[order(names(tmp))]])
@@ -343,19 +352,26 @@ checkDates <- function(baitInput, tasData) {
 #' @importFrom terra tapp
 #' @importFrom madrat readSource
 
-prepBaitInput <- function(frsds=NULL, fsfc=NULL, fhuss=NULL, baitInput=NULL, fillWithMean=FALSE) {
+prepBaitInput <- function(frsds = NULL,
+                          fsfc = NULL,
+                          fhuss = NULL,
+                          baitInput = NULL,
+                          fillWithMean = FALSE) {
+
   if (isTRUE(fillWithMean)) {
     # optional: calculate daily means over years to fill missing data
     baitInputMean <- sapply(
-      names(baitInput), function(var) {
+      names(baitInput),
+      function(var) {
         meanData <- tapp(baitInput[[var]],
                          unique(substr(names(baitInput[[var]]), 6, 11)),
                          fun = "mean")
         names(meanData) <- gsub("\\.", "-", substr(names(mean), 2, 6))
-        return(meanData)})
+        return(meanData)
+      }
+    )
     return(baitInputMean)
-  }
-  else {
+  } else {
     input <- list(
       "rsds" = readSource("ISIMIPbuildings", subtype = frsds, convert = TRUE),
       "sfc"  = readSource("ISIMIPbuildings", subtype = fsfc,  convert = TRUE),
@@ -374,7 +390,7 @@ prepBaitInput <- function(frsds=NULL, fsfc=NULL, fhuss=NULL, baitInput=NULL, fil
 #' atmospherical temperature.
 #' If no cell-resoluted parameters are given, the globally-meaned parameters from
 #' Staffel et. all 2023 are taken
-#' (see \link{https://static-content.springer.com/esm/art%3A10.1038%2Fs41560-023-01341-5/MediaObjects/41560_2023_1341_MOESM1_ESM.pdf})
+#' (see \link{https://doi.org/10.1038/s41560-023-01341-5})
 #'
 #' @param t raster data on near-surface atmospherical temperature
 #' @param type considered climate variable
@@ -382,21 +398,25 @@ prepBaitInput <- function(frsds=NULL, fsfc=NULL, fhuss=NULL, baitInput=NULL, fil
 #'
 #' @return counterfactuals for respective climate variable
 
-cfac <- function(t, type, params=NULL) {
+cfac <- function(t, type, params = NULL) {
+  # nolint start
   if (is.null(params)) {
     params <- switch(type,
                      s = c(100, 7),
                      w = c(4.5, -0.025),
                      h = c(1.1, 0.06),
-                     t = c(16))}
+                     t = c(16))
+    }
 
   return(switch(type,
                 s = {params[[1]] + params[[2]] * t},
                 w = {params[[1]] + params[[2]] * t},
                 h = {exp(params[[1]] + params[[2]] * t)},
                 t = {params[[1]]},
-                error("No valid parameter type specified.")
-  ))
+                error("No valid parameter type specified.") #nolint
+                )
+         )
+  # nolint end
 }
 
 
@@ -418,11 +438,11 @@ smooth <- function(r, weight) {
   r1D[[1]] <- 0
 
   # two days indented
-  r2D <-  r[[c(nlyr(r)-1, nlyr(r), 1:(nlyr(r) - 2))]]
+  r2D <-  r[[c(nlyr(r) - 1, nlyr(r), 1:(nlyr(r) - 2))]]
   r2D[[1:2]] <- 0
 
   # smooth
-  rSmooth <- (r + weight[["sig"]]*r1D + weight[["sig"]]**2 * r2D) / (1 + weight[["sig"]] + weight[["sig"]]**2)
+  rSmooth <- (r + weight[["sig"]] * r1D + weight[["sig"]]**2 * r2D) / (1 + weight[["sig"]] + weight[["sig"]]**2)
 
   return(rSmooth)
 }
@@ -445,8 +465,9 @@ smooth <- function(r, weight) {
 
 blend <- function(bait, tas, weight) {
   print("blend")
-  bBar <- (tas - 0.5*(weight[["bUpper"]] + weight[["bLower"]])) * 10 / (weight[["bUpper"]] - weight[["bLower"]])
-  b <- weight[["bMax"]] / (1 + exp(-bBar))
+
+  bBar <- (tas - 0.5 * (weight[["bUpper"]] + weight[["bLower"]])) * 10 / (weight[["bUpper"]] - weight[["bLower"]])
+  b    <- weight[["bMax"]] / (1 + exp(-bBar))
 
   blend <- bait * (1 - b) + (tas * b)
   return(blend)
@@ -473,35 +494,34 @@ blend <- function(bait, tas, weight) {
 #'
 #' @return raster object with BAIT values
 
-calcBAIT <- function(baitInput, tasData, weight=NULL, params=NULL) {
+calcBAIT <- function(baitInput, tasData, weight = NULL, params = NULL) {
   if (is.null(weight)) {
     warning("Please give appropriate weights for the calculation of BAIT.")
-    weight <- list("wRSDS"  = wRSDS,
-                   "wSFC"   = wSFC,
-                   "wHUSS"  = wHUSS,
-                   "sig"    = sig,
-                   "bLower" = bLower,
-                   "bUpper" = bUpper,
-                   "bMax"   = bMax)}
-
-  dates <- names(tasData)
+    weight <- list("wRSDS"  = 0.012,
+                   "wSFC"   = -0.20,
+                   "wHUSS"  = 0.05,
+                   "sig"    = 0.5,
+                   "bLower" = 15,
+                   "bUpper" = 23,
+                   "bMax"   = 0.5)
+  }
 
   solar <- baitInput$rsds
   wind  <- baitInput$sfc
   hum   <- baitInput$huss
 
   print("calc s")
-  s <- solar -  cfac(tasData, type="s", params = c(params[["aRSDS"]], params[["bRSDS"]]))
+  s <- solar -  cfac(tasData, type = "s", params = c(params[["aRSDS"]], params[["bRSDS"]]))
   print("calc w")
-  w <- wind  -  cfac(tasData, type="w", params = c(params[["aSFC"]], params[["bSFC"]]))
+  w <- wind  -  cfac(tasData, type = "w", params = c(params[["aSFC"]], params[["bSFC"]]))
   print("print h")
-  h <- hum   -  cfac(tasData, type="h", params = c(params[["aHUSS"]], params[["bHUSS"]]))
+  h <- hum   -  cfac(tasData, type = "h", params = c(params[["aHUSS"]], params[["bHUSS"]]))
   print("calc t")
-  t <- tasData  -  cfac(tasData, type="t", params = NULL)
+  t <- tasData - cfac(tasData, type = "t", params = NULL)
 
   # calc bait
   print("calc bait")
-  bait <- tasData + weight[["wRSDS"]]*s + weight[["wSFC"]]*w + weight[["wHUSS"]]*h*t
+  bait <- tasData + weight[["wRSDS"]] * s + weight[["wSFC"]] * w + weight[["wHUSS"]] * h * t
 
   # smooth bait
   bait <- smooth(bait, weight)
@@ -531,13 +551,13 @@ calcBAIT <- function(baitInput, tasData, weight=NULL, params=NULL) {
 #' To account for heterogenity in heating/cooling behavior, the ambient and limit
 #' temperature, \code{tamb} and \code{tlim}, are assumed to be normally distributed.
 #' This changes the calculation of a degree day to a double integration of
-#' \code{T_limit - T_ambient_day} with integration boundaries set at 3 standard
+#' \code{tLimit - T_ambient_day} with integration boundaries set at 3 standard
 #' deviations, \code{tambStd} and \code{tlimStd}, from \code{tamb} and \code{tlim}
 #' respectively.
 #'
-#' As consequence, the ramp function of \code{HDD_day = max(0, T_limit - T_ambient_day)}
+#' As consequence, the ramp function of \code{HDD_day = max(0, tLimit - T_ambient_day)}
 #' changes to a curved function that is above zero even if the mean of \code{T_ambient_day}
-#' is above the mean of \code{T_limit}.
+#' is above the mean of \code{tLimit}.
 #'
 #' @param tlow lower temperature boundary
 #' @param tup upper temperature boundary
@@ -550,25 +570,25 @@ calcBAIT <- function(baitInput, tasData, weight=NULL, params=NULL) {
 #' @importFrom stats dnorm
 #' @importFrom pracma integral2
 
-calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd=5, tlimStd=5) {
+calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
 
   # t1 : ambient temperature variable
   # t2 : limit temperature variable
 
   # HDD
   heatingFactor <- function(t2, t1, tamb, tambStd, tlim, tlimStd) {
-    h <- dnorm(t2, mean=tlim, sd=tlimStd) * dnorm(t1, mean=tamb, sd=tambStd) * (t2 - t1)
+    h <- dnorm(t2, mean = tlim, sd = tlimStd) * dnorm(t1, mean = tamb, sd = tambStd) * (t2 - t1)
     return(h)
   }
 
   # CDD
   coolingFactor <- function(t2, t1, tamb, tambStd, tlim, tlimStd) {
-    h <- dnorm(t2, mean=tlim, sd=tlimStd) * dnorm(t1, mean=tamb, sd=tambStd) * (t1 - t2)
+    h <- dnorm(t2, mean = tlim, sd = tlimStd) * dnorm(t1, mean = tamb, sd = tambStd) * (t1 - t2)
     return(h)
   }
 
   # check if ambient/limit temperature interval is reasonable
-  # e.g. t_lim = 17C and t_amb = -50C wouldn't give reasonable CDD
+  # e.g. tLim = 17C and t_amb = -50C wouldn't give reasonable CDD
   checkTDif <- function(tamb, tlim, typeDD, tambStd, tlimStd) {
     check <- TRUE
     stdDif <- tambStd + tlimStd
@@ -576,9 +596,8 @@ calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd=5, tlimStd=5) {
       if (tamb - tlim > stdDif) {
         check <- FALSE
       }
-    }
-    else if (typeDD == "CDD") {
-      if (tlim - tamb > 2*stdDif) {
+    } else if (typeDD == "CDD") {
+      if (tlim - tamb > 2 * stdDif) {
         check <- FALSE
       }
     }
@@ -599,37 +618,34 @@ calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd=5, tlimStd=5) {
                     if (!checkTDif(tamb, .tlim, typeDD, tambStd, tlimStd)) {
                       tmp <- data.frame("T_amb"        = tamb,
                                         "T_amb_K"      = round(tamb + 273.15, 1),
-                                        "T_lim"        = .tlim,
+                                        "tLim"         = .tlim,
                                         "factor"       = 0,
                                         "factor_err"   = 0,
                                         "typeDD"       = typeDD)
-                    }
-                    else {
+                    } else {
 
                       # integration boundaries
-                      x1 <- .tlim - 4*tlimStd
-                      x2 <- .tlim + 4*tlimStd
-                      y1 <- min(.tlim - 3*tlimStd, tamb - 3*tlimStd)
-                      y2 <- max(.tlim + 3*tlimStd, tamb + 3*tlimStd)
+                      x1 <- .tlim - 4 * tlimStd
+                      x2 <- .tlim + 4 * tlimStd
+                      y1 <- min(.tlim - 3 * tlimStd, tamb - 3 * tlimStd)
+                      y2 <- max(.tlim + 3 * tlimStd, tamb + 3 * tlimStd)
 
                       if (typeDD == "HDD") {
                         f <- integral2(heatingFactor,
                                        xmin = x1,
                                        xmax = x2,
                                        ymin = y1,
-                                       ymax = function(x){x},
+                                       ymax = function(x) {x}, #nolint
                                        tamb = tamb,
                                        tambStd = tambStd,
                                        tlim = .tlim,
                                        tlimStd = tlimStd,
-                                       reltol = 1e-1
-                        )
-                      }
-                      else {
+                                       reltol = 1e-1)
+                      } else {
                         f <- integral2(coolingFactor,
                                        xmin = x1,
                                        xmax = x2,
-                                       ymin = function(x){x},
+                                       ymin = function(x) {x}, #nolint
                                        ymax = y2,
                                        tamb = tamb,
                                        tambStd = tambStd,
@@ -639,11 +655,12 @@ calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd=5, tlimStd=5) {
                       }
                       tmp <- data.frame("T_amb"        = tamb,
                                         "T_amb_K"      = round(tamb + 273.15, 1),
-                                        "T_lim"        = .tlim,
+                                        "tLim"        = .tlim,
                                         "factor"       = f$Q,
                                         "factor_err"   = f$error,
                                         "typeDD"       = typeDD)
                     }
+                    return(tmp)
                   }
                 )
               )
@@ -669,7 +686,6 @@ calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd=5, tlimStd=5) {
 #' @importFrom terra classify tapp
 
 calcCellHDDCDD <- function(temp, typeDD, tlim, factors) {
-  browser()
   # extract years
   dates <- names(temp)
 
@@ -677,7 +693,7 @@ calcCellHDDCDD <- function(temp, typeDD, tlim, factors) {
   factors <- factors[factors$typeDD == typeDD, ]
 
   factors <- factors %>%
-    filter(.data[["T_lim"]] == tlim) %>%
+    filter(.data[["tLim"]] == tlim) %>%
     dplyr::reframe(from = .data[["T_amb_K"]] - 0.049,
                    to = .data[["T_amb_K"]] + 0.049,
                    becomes = .data[["factor"]]) %>%
@@ -767,13 +783,15 @@ aggCells <- function(data, weight, mask) {
 #'
 #' @importFrom raster writeRaster
 #' @importFrom stringr str_split
+#' @importFrom terra writeCDF
 
 calcStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
                             frsds = NULL,
                             fsfc  = NULL,
                             fhuss = NULL,
                             wBAIT = NULL,
-                            params = NULL) {
+                            params = NULL,
+                            rasDir = NULL) {
 
   # read cellular temperature
   temp <- readSource("ISIMIPbuildings", subtype = ftas, convert = TRUE)
@@ -813,19 +831,19 @@ calcStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
         do.call(
           "rbind", lapply(
             tlim[[typeDD]], function(t) {
-              browser()
               hddcddAgg <- calcCellHDDCDD(temp, typeDD, t, factors)
 
               # write raster files
-              y <- names(hddcddAgg)
+              if (!is.null(rasDir)) {
+                y <- names(hddcddAgg)
 
-              rname <- paste0(fSplit[[1]], "_", y, "_", fSplit[[4]], "_", typeDD, "_", t)
+                rname <- paste0(fSplit[[1]], "_", y, "_", fSplit[[4]], "_", typeDD, "_", t)
+                rname <- paste0(rname, if (bait) "_bait" else "", ".nc")
 
-              rname <- paste0(rname, if (bait) "_bait" else "", ".nc")
-
-              terra::writeCDF(hddcddAgg,
-                              file.path("/p/tmp/hagento/output/rasterdata", fSplit[[1]], rname),
-                              overwrite = TRUE)
+                writeCDF(hddcddAgg,
+                         file.path(rasDir, fSplit[[1]], rname),
+                         overwrite = TRUE)
+              }
 
               hddcddAgg <- hddcddAgg %>%
                 aggCells(pop, countries) %>%
@@ -843,5 +861,3 @@ calcStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
 
   return(hddcdd)
 }
-
-

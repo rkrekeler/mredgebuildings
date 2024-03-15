@@ -13,7 +13,7 @@
 #' @author Hagen Tockhorn
 #'
 #' @importFrom stringr str_split
-#' @importFrom raster brick dropLayer res extent aggregate
+#' @importFrom terra rast subset aggregate ext res
 #'
 #' @note
 #' folder structure in inputdata/sources/ISIMIPbuildings is expected to be:
@@ -38,8 +38,9 @@ readISIMIPbuildings <- function(subtype) {
   splitSubtype <- function(subtype) {
     vars <- list()
 
+    # nolint start
     if (grepl("countrymask", subtype)) {
-      vars[["variable"]] = "countrymask"
+      vars[["variable"]] <- "countrymask"
     }
 
     else if (grepl("population", subtype)) {
@@ -75,9 +76,10 @@ readISIMIPbuildings <- function(subtype) {
 
         vars[["subtype"]] <- sub("_(1[0-9]|\\d)\\.nc$", ".nc", subtype)
       }
-    }
-
-    else {stop("Invalid subtype given.")}
+    } else {
+        stop("Invalid subtype given.")
+      }
+    # nolint end
 
     return(vars)
   }
@@ -106,15 +108,16 @@ readISIMIPbuildings <- function(subtype) {
   # PROCESS DATA----------------------------------------------------------------
   vars <- splitSubtype(subtype)
 
+  # nolint start
   # region mask
-  if (vars[["variable"]] == "countrymask"){
+  if (vars[["variable"]] == "countrymask") {
     fpath <- file.path("countrymasks", subtype)
     varNames <- names(ncdf4::nc_open(fpath)[["var"]])
     countries <- list()
     for (var in varNames) {
-      countries[[var]] <- suppressWarnings(terra::rast(fpath, subds = var))
+      countries[[var]] <- suppressWarnings(rast(fpath, subds = var))
     }
-    r <- terra::rast(countries)
+    r <- rast(countries)
     names(r) <- gsub("m_", "", varNames)
 
     x <- list(x = r, class = "SpatRaster")
@@ -126,10 +129,10 @@ readISIMIPbuildings <- function(subtype) {
     fpath <- file.path(vars[["variable"]], vars[["scenario"]], subtype)
 
     if (vars[["scenario"]] == "picontrol") {
-      r <- suppressWarnings(terra::rast(fpath))
+      r <- suppressWarnings(rast(fpath))
     }
     else {
-      r <- suppressWarnings(terra::rast(fpath, subds = "total-population"))
+      r <- suppressWarnings(rast(fpath, subds = "total-population"))
     }
 
     subtype <- gsub(".nc", "", subtype)
@@ -139,14 +142,13 @@ readISIMIPbuildings <- function(subtype) {
     names(r) <- years[1]:years[2]
 
     # filter relevant years
-    r <- terra::subset(r, as.numeric(names(r)) >= firstHistYear)
+    r <- subset(r, as.numeric(names(r)) >= firstHistYear)
 
     # aggregate to common resolution of 0.5 deg
-    if (any(raster::res(r) != 0.5)) {
-      r <- terra::aggregate(r, fun = "sum",
-                             fact = round(0.5 / terra::res(r), 3))
-      terra::res(r) <- 0.5
-      terra::ext(r) <- round(terra::ext(r))
+    if (any(res(r) != 0.5)) {
+      r <- aggregate(r, fun = "sum", fact = round(0.5 / res(r), 3))
+      res(r) <- 0.5
+      ext(r) <- round(ext(r))
     }
 
     x <- list(x = r, class = "SpatRaster", cache = FALSE)
@@ -160,20 +162,21 @@ readISIMIPbuildings <- function(subtype) {
       fpath  <- file.path(vars[["variable"]], vars[["scenario"]], vars[["model"]], vars[["subtype"]])
       ranges <- getRanges(vars)
 
-      r        <- suppressWarnings(terra::rast(fpath, lyrs = ranges[["idxRange"]]))
+      r        <- suppressWarnings(rast(fpath, lyrs = ranges[["idxRange"]]))
       names(r) <- ranges[["yRange"]]
     }
 
     # full data set
     else {
       fpath <- file.path(vars[["variable"]], vars[["scenario"]], vars[["model"]], subtype)
-      r <- suppressWarnings(terra::rast(fpath))
+      r <- suppressWarnings(rast(fpath))
     }
 
     x <- list(x = r, class = "SpatRaster", cache = FALSE)
   }
 
   else {stop("Subtype was incorrectly split or invalid subtype given.")}
+  # nolint end
 
   return(x)
 }
