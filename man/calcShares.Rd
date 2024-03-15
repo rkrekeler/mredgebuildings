@@ -29,6 +29,7 @@ Merges and transforms the calculated shares from the Datasets:
 Odyssee
 IEA_ETP
 TCEP
+WEO
 }
 \details{
 Enduse shares are extrapolated using a linear regression where the ETP datapoint

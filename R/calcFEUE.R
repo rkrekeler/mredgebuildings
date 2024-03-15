@@ -5,6 +5,8 @@
 #'
 #' @author Hagen Tockhorn
 #'
+#' @return data.frame with final and useful energy demand
+#'
 #' @export
 
 

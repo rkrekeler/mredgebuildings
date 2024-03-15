@@ -48,6 +48,8 @@ calcPFUDB <- function() {
   # fridge share of Europe (see calcShares)
   fridgeShare <- 0.17
 
+  endOfHistory <- 1990
+
 
 
   # READ-IN DATA ---------------------------------------------------------------
@@ -60,7 +62,8 @@ calcPFUDB <- function() {
 
   sharesEU <- calcOutput("Shares",
                          subtype = "enduse_thermal",
-                         aggregate = FALSE)  %>%
+                         aggregate = TRUE,
+                         regionmapping = "regionmappingEUshares.csv") %>%
     as.quitte()
 
 
@@ -81,10 +84,11 @@ calcPFUDB <- function() {
 
   # Mappings
 
-  # ETP mapping
-  regmapping <- toolGetMapping("regionmappingIEA_ETP.csv",
-                               "regional",
-                               "mredgebuildings")
+  # EU Shares region mapping
+  regmapping <- toolGetMapping(name  = "regionmappingEUshares.csv",
+                               type  = "regional",
+                               where = "mredgebuildings") %>%
+    select("region", "regionAgg")
 
   # Enduse Mappings
   enduseMapping <- toolGetMapping("enduseMap_PFUDB.csv", "sectoral",
@@ -130,13 +134,6 @@ calcPFUDB <- function() {
                            "refrigerators",
                            as.character(.data[["enduse"]])))
 
-  # prepare regional mapping
-  regmapping <- regmapping %>%
-    mutate(regionAgg = ifelse(.data[["EEAReg"]] == "rest",
-                              .data[["OECD"]],
-                              .data[["EEAReg"]])) %>%
-    select(region = "CountryCode", "regionAgg")
-
   # Extract regions with existing disaggregated FE shares
   replaceRegs <- sharesOdyssee %>%
     filter(!is.na(.data[["value"]])) %>%
@@ -155,22 +152,8 @@ calcPFUDB <- function() {
     ungroup()
 
 
-  # Reduce the data frames dimensions to the minimal set
-  pfu <- pfu %>%
-    semi_join(sharesEU, by = c("region", "period"))
   sharesEU <- sharesEU %>%
-    semi_join(pfu, by = c("region", "period"))
-
-  # reaggregate end use shares to ETP regions
-  # TODO: This aggregation should be done within calcOutput but for this, we
-  # need a full region mapping that doesn't require the post processing done
-  # above. I don't know yet, why in come cases, there are different values in
-  # one region but we take the mean in this case. To be checked.
-  sharesEU <- sharesEU %>%
-    left_join(regmapping, by = "region") %>%
-    group_by(across(all_of(c("regionAgg", "period", "enduse")))) %>%
-    summarise(value = mean(.data[["value"]]), .groups = "drop") %>%
-    rename(region = "regionAgg")
+    select("region", "period", "enduse", "value")
 
 
   # data excluded from disaggregation
@@ -187,7 +170,6 @@ calcPFUDB <- function() {
               by = c("region", "period", "carrier")) %>%
     mutate(value = .data[["value"]] * .data[["share"]]) %>%
     select(-"share")
-
 
 
   # Disaggregate Low-T Heat into different enduses
@@ -233,6 +215,10 @@ calcPFUDB <- function() {
                     by = "enduse",
                     variable = "enduse",
                     forceAggregation = TRUE))
+
+  # Select data above lower history boundary
+  pfuRes <- pfuRes %>%
+    filter(.data[["period"]] >= endOfHistory)
 
 
 

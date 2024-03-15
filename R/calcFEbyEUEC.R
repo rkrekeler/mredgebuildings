@@ -23,13 +23,6 @@ calcFEbyEUEC <- function() {
                       aggregate = FALSE) %>%
     as.quitte(na.rm = TRUE)
 
-
-  # EU Shares
-  # sharesEU <- calcOutput("Shares",
-  #                        subtype = "enduse_nonthermal",
-  #                        aggregate = FALSE) %>%
-  #             as.quitte()
-
   sharesEU <- calcOutput("Shares",
                          subtype = "enduse_nonthermal",
                          aggregate = TRUE,
@@ -44,20 +37,12 @@ calcFEbyEUEC <- function() {
                           aggregate = FALSE) %>%
   as.quitte()
 
-  # feOdyssee <- read.csv("../EUECshares_EDGE.csv")
 
-
-  # ETP mapping
+  # EU Shares mapping
   regmapping <- toolGetMapping(name  = "regionmappingEUshares.csv",
                                type  = "regional",
                                where = "mredgebuildings") %>%
     select("region", "regionAgg")
-
-  # regmapping <- toolGetMapping(name  = "regionmappingEDGE-EUR_ETP.csv",
-  #                              type  = "regional",
-  #                              where = "mredgebuildings") %>%
-  #   rename(region = "CountryCode",
-  #          regionAgg = "RegionCodeEUR_ETP")
 
 
 
