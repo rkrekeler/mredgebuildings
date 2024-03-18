@@ -23,12 +23,6 @@ calcFEbyEUEC <- function() {
                       aggregate = FALSE) %>%
     as.quitte(na.rm = TRUE)
 
-  sharesEU <- calcOutput("Shares",
-                         subtype = "enduse_nonthermal",
-                         aggregate = TRUE,
-                         regionmapping = "regionmappingEUshares.csv") %>%
-    as.quitte()
-
 
   # FE EU Data
   feOdyssee <- calcOutput("ShareOdyssee",
@@ -36,6 +30,14 @@ calcFEbyEUEC <- function() {
                           feOnly = TRUE,
                           aggregate = FALSE) %>%
   as.quitte()
+
+
+  # EU Shares
+  sharesEU <- calcOutput("Shares",
+                         subtype = "enduse_nonthermal",
+                         aggregate = TRUE,
+                         regionmapping = "regionmappingEUshares.csv") %>%
+    as.quitte()
 
 
   # EU Shares mapping
@@ -90,7 +92,7 @@ calcFEbyEUEC <- function() {
     select("region", "period", "unit", "carrier", "enduse", "value")
 
 
-  data <- rbind(ieaIODis %>%
+  ieaIO <- rbind(ieaIODis %>%
                   filter(!(.data[["region"]] %in% replaceRegs)),
                 feOdyssee %>%
                   filter(.data[["region"]] %in% replaceRegs))

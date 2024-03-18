@@ -149,17 +149,26 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
   }
 
 
+  # FE Weights
+  feWeights <- pfu %>%
+    interpolate_missing_periods(period = seq(1990, 2020)) %>%
+    filter(unit == "fe") %>%
+    semi_join(efficiencies, by = c("region", "period", "carrier", "enduse")) %>%
+    mutate(value = replace_na(.data[["value"]], 0)) %>%
+    select("region", "period", "carrier", "enduse", "value") %>%
+    as.magpie()
+
+
   # OUTPUT ---------------------------------------------------------------------
 
   # Weights = FE?
 
-  efficiencies <- dataHist %>%
-    select(-"gdppop", -"efficiency", -"pred", -"factor") %>%
+  efficiencies <- efficiencies %>%
     as.magpie()
 
   return(list(
     x = efficiencies,
-    weights = NULL,
+    weights = feWeights,
     min = 0,
     description = "Historical Conversion Efficiencies from FE to UE"
   ))
