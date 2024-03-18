@@ -67,10 +67,10 @@ calcHDDCDD <- function(mappingFile,
                                     pop,
                                     hddcddFactor,
                                     bait,
-                                    frsds = frsds,
-                                    fsfc  = fsfc,
-                                    fhuss = fhuss,
-                                    wBAIT = wBAIT,
+                                    frsds  = frsds,
+                                    fsfc   = fsfc,
+                                    fhuss  = fhuss,
+                                    wBAIT  = wBAIT,
                                     params = params,
                                     rasDir = rasDir)
     } else {
@@ -148,29 +148,27 @@ calcHDDCDD <- function(mappingFile,
   # READ-IN DATA----------------------------------------------------------------
 
   # list of files that are processed
-  files <- toolGetMapping(mappingFile, type = "sectoral", where = "mredgebuildings") %>%
+  files <- toolGetMapping(name  = mappingFile,
+                          type  = "sectoral",
+                          where = "mredgebuildings") %>%
     filter(.data[["variable"]] != "")
 
   # cells -> country mask
   fCM <- file.path(files[files$variable == "CountryMask", "file"])
   countries <- readSource("ISIMIPbuildings", subtype = fCM, convert = FALSE)
 
-
-
-  # PROCESS DATA----------------------------------------------------------------
-
-  # calculate HDD/CDD-factors
-  hddcddFactor <- calcHDDCDDFactors(tlow = tlow, tup = tup, tLim, tambStd, tlimStd)
-
-  ssp   <- unique(files$ssp[files$variable == "tas"])
-  rcp   <- unique(files$rcp[files$variable == "tas"])
-  model <- unique(files$gcm[files$variable == "tas"])
-
-  # read population data
+  # population
   fpop <- files %>% filter(.data[["variable"]] == "pop")
   pop  <- readSource("ISIMIPbuildings", subtype = fpop$file,
                      convert = FALSE)
 
+  # extract run-specific variables
+  ssp   <- unique(files$ssp[files$variable == "tas"])
+  rcp   <- unique(files$rcp[files$variable == "tas"])
+  model <- unique(files$gcm[files$variable == "tas"])
+
+
+  # bait regression parameters
   if (bait) {
     baitPars <- calcOutput("BAITpars",
                            aggregate = FALSE,
@@ -180,6 +178,15 @@ calcHDDCDD <- function(mappingFile,
     names(baitPars) <- parNames
   }
 
+
+
+  # PROCESS DATA----------------------------------------------------------------
+
+  # calculate HDD/CDD-factors
+  hddcddFactor <- calcHDDCDDFactors(tlow = tlow, tup = tup, tLim, tambStd, tlimStd)
+
+
+  # full calculation of degree days
   hddcdd <- do.call( # file iteration
     "rbind",
     lapply(
@@ -394,21 +401,21 @@ prepBaitInput <- function(frsds = NULL,
 #' @return counterfactuals for respective climate variable
 
 cfac <- function(t, type, params = NULL) {
-  # nolint start
   if (is.null(params)) {
     params <- switch(type,
                      s = c(100, 7),
                      w = c(4.5, -0.025),
                      h = c(1.1, 0.06),
                      t = c(16))
-    }
+  }
 
+  # nolint start
   return(switch(type,
                 s = {params[[1]] + params[[2]] * t},
                 w = {params[[1]] + params[[2]] * t},
                 h = {exp(params[[1]] + params[[2]] * t)},
                 t = {params[[1]]},
-                error("No valid parameter type specified.") #nolint
+                warning("No valid parameter type specified.")
                 )
          )
   # nolint end

@@ -109,16 +109,17 @@ readISIMIPbuildings <- function(subtype) {
   # PROCESS DATA----------------------------------------------------------------
   vars <- splitSubtype(subtype)
 
-  # nolint start
   # region mask
   if (vars[["variable"]] == "countrymask") {
-    fpath <- file.path("countrymasks", subtype)
-    varNames <- names(nc_open(fpath)[["var"]])
+    fpath     <- file.path("countrymasks", subtype)
+    varNames  <- names(nc_open(fpath)[["var"]])
     countries <- list()
+
     for (var in varNames) {
       countries[[var]] <- suppressWarnings(rast(fpath, subds = var))
     }
-    r <- rast(countries)
+
+    r        <- rast(countries)
     names(r) <- gsub("m_", "", varNames)
 
     x <- list(x = r, class = "SpatRaster")
@@ -126,20 +127,19 @@ readISIMIPbuildings <- function(subtype) {
 
 
   # population
-  else if (vars[["variable"]] == "population") {
+  else if (vars[["variable"]] == "population") { #nolint
     fpath <- file.path(vars[["variable"]], vars[["scenario"]], subtype)
 
     if (vars[["scenario"]] == "picontrol") {
       r <- suppressWarnings(rast(fpath))
-    }
-    else {
+    } else {
       r <- suppressWarnings(rast(fpath, subds = "total-population"))
     }
 
     subtype <- gsub(".nc", "", subtype)
 
     # rename years
-    years <- tail(strsplit(subtype, "_")[[1]], 2)
+    years    <- tail(strsplit(subtype, "_")[[1]], 2)
     names(r) <- years[1]:years[2]
 
     # filter relevant years
@@ -148,8 +148,6 @@ readISIMIPbuildings <- function(subtype) {
     # aggregate to common resolution of 0.5 deg
     if (any(res(r) != 0.5)) {
       r <- aggregate(r, fun = "sum", fact = round(0.5 / res(r), 3))
-      res(r) <- 0.5
-      ext(r) <- round(ext(r))
     }
 
     x <- list(x = r, class = "SpatRaster", cache = FALSE)
@@ -157,7 +155,7 @@ readISIMIPbuildings <- function(subtype) {
 
 
   # climate data
-  else if (any(vars[["variable"]] %in% baitVars)) {
+  else if (any(vars[["variable"]] %in% baitVars)) { #nolint
     # slice single years
     if (!is.null(vars[["yStart"]])) {
       fpath  <- file.path(vars[["variable"]], vars[["scenario"]], vars[["model"]], vars[["subtype"]])
@@ -168,7 +166,7 @@ readISIMIPbuildings <- function(subtype) {
     }
 
     # full data set
-    else {
+    else { #nolint
       fpath <- file.path(vars[["variable"]], vars[["scenario"]], vars[["model"]], subtype)
       r <- suppressWarnings(rast(fpath))
     }
@@ -176,8 +174,7 @@ readISIMIPbuildings <- function(subtype) {
     x <- list(x = r, class = "SpatRaster", cache = FALSE)
   }
 
-  else {stop("Subtype was incorrectly split or invalid subtype given.")}
-  # nolint end
+  else {stop("Subtype was incorrectly split or invalid subtype given.")} #nolint
 
   return(x)
 }
