@@ -63,7 +63,8 @@ calcFEbyEUEC <- function() {
     select("region", "period", "enduse", "value")
 
   ieaIO <- ieaIO %>%
-    rename(carrier = "variable")
+    rename(carrier = "variable") %>%
+    semi_join(sharesEU, by = c("period"))
 
 
   #--- Prepare toolDisaggregate Input
@@ -92,10 +93,43 @@ calcFEbyEUEC <- function() {
     select("region", "period", "unit", "carrier", "enduse", "value")
 
 
-  ieaIO <- rbind(ieaIODis %>%
+  data <- rbind(ieaIODis %>%
                   filter(!(.data[["region"]] %in% replaceRegs)),
                 feOdyssee %>%
                   filter(.data[["region"]] %in% replaceRegs))
+
+
+  # CORRECTIONS ----------------------------------------------------------------
+
+  # For unknown reasons, the enduse share of "space_cooling" for region "Africa"
+  # is not met and will therefore be corrected. Since "space_cooling" only corresponds
+  # to the carrier "elec", the correction is straight-forward.
+  # TODO: check if this can be fixed
+
+  elecSpaceCoolingShare <- sharesEU %>%
+    filter(region == "Africa",
+           enduse == "space_cooling") %>%
+    select("period", "value") %>%
+    rename("share" = "value")
+
+  dataCorr <- data %>%
+    left_join(regmapping, by = c("region")) %>%
+    filter(.data[["regionAgg"]] == "Africa") %>%
+    left_join(elecSpaceCoolingShare, by = c("period")) %>%
+    select(-"regionAgg") %>%
+    group_by(across(-all_of(c("enduse", "carrier", "share", "value")))) %>%
+    mutate(value = ifelse(.data[["enduse"]] == "space_cooling",
+                          ifelse(!(.data[["carrier"]] == "elec"),
+                                 .data[["value"]],
+                                 sum(.data[["value"]], na.rm = T) * .data[["share"]]),
+                          .data[["value"]] * (1 - .data[["share"]]))) %>%
+    select(-"share")
+
+  dataFull <- rbind(dataCorr,
+                    data %>%
+                      left_join(regmapping, by = c("region")) %>%
+                      filter(.data[["regionAgg"]] != "Africa") %>%
+                      select(-"regionAgg"))
 
 
 

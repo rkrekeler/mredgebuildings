@@ -30,7 +30,7 @@ calcFEUE <- function() {
 
   # READ-IN DATA ---------------------------------------------------------------
 
-  fe <- calcOutput("FEbyEUEC", aggregate = FALSE) %>%
+  fe <- calcOutput("FEbyEUEC", aggregate = TRUE, regionmapping = "regionmappingISO-EDGE_EUR_ETP.csv") %>%
     as.quitte()
 
 

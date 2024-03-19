@@ -6,6 +6,9 @@
 \usage{
 calcFEUE()
 }
+\value{
+data.frame with final and useful energy demand
+}
 \description{
 Historic Final Energy (FE) Demand and FE-EU-Efficiencies are taken to
 compute Useful Energy (UE) Demand.
