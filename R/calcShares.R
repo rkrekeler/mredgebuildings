@@ -255,8 +255,6 @@ calcShares <- function(subtype = c("carrier_nonthermal",
 
   # PROCESS DATA ---------------------------------------------------------------
 
-  browser()
-
   # Adjust ETP Mapping
   regmappingETP <- regmappingETP %>%
     mutate(EEAReg = ifelse(.data[["EEAReg"]] == "rest",

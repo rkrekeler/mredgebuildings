@@ -106,7 +106,8 @@ calcPFUDB <- function() {
     revalue.levels(carrier = carriersnames) %>%
     factor.data.frame() %>%
     mutate(value = replace_na(.data[["value"]], 0)) %>%
-    select("region", "period", "unit", "carrier", "enduse", "value")
+    select("region", "period", "unit", "carrier", "enduse", "value")  %>%
+    semi_join(sharesEU, by = c("period"))
 
 
 

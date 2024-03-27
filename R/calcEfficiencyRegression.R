@@ -22,6 +22,7 @@
 
 
 calcEfficiencyRegression <- function() {
+
   # FUNCTIONS ------------------------------------------------------------------
 
   # Extrapolate historic FE-UE Efficiencies from Fit Function
@@ -61,6 +62,10 @@ calcEfficiencyRegression <- function() {
   pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
     as.quitte()
 
+  # regression parameter corrections
+  parsCorr <- toolGetMapping(name  = "correct_efficiencies.csv",
+                             type  = "sectoral",
+                             where = "mredgebuildings")
 
 
   # PARAMETERS -----------------------------------------------------------------
@@ -131,13 +136,40 @@ calcEfficiencyRegression <- function() {
       rbind(parsFull)
   }
 
+  parsFull <- parsFull %>%
+    separate("variable", c("enduse", "carrier"), sep = "\\.")
+
+
+
+  # CORRECTIONS ----------------------------------------------------------------
+
+  # Tediously transform the corrected parameters ... must be a better solution
+  parsCorr <- parsCorr %>%
+    mutate("space_cooling.elec" = gsub(" ", "", .data[["space_cooling.elec"]]),
+           "space_cooling.elec" = gsub("\\,", "\\.", .data[["space_cooling.elec"]]),
+           "space_cooling.elec" = as.numeric(.data[["space_cooling.elec"]])) %>%
+    gather(key = "variable", value = "value", "space_cooling.elec", "water_heating.elec", "space_heating.elec") %>%
+    spread(key = "parameter", value = "value") %>%
+    separate(col = "variable", into = c("enduse", "carrier"), sep = "\\.") %>%
+    select(-"phi3") %>%
+    rename(AsymCorr = "Asym", lrcCorr = "lrc", R0Corr = "R0")
+
+
+
+  # Correct Regression Parameters for electrical Heat Transfer Technologies
+  parsFull <- parsFull %>%
+    left_join(parsCorr, by = c("carrier", "enduse")) %>%
+    mutate(Asym = ifelse(is.na(.data[["AsymCorr"]]), .data[["Asym"]], .data[["AsymCorr"]]),
+           R0 = ifelse(is.na(.data[["R0Corr"]]), .data[["R0"]], .data[["R0Corr"]]),
+           lrc = ifelse(is.na(.data[["lrcCorr"]]), .data[["lrc"]], .data[["lrcCorr"]])) %>%
+    select(-"AsymCorr", -"R0Corr", -"lrcCorr")
+
 
 
   # OUTPUT ---------------------------------------------------------------------
 
   # Trim Dataframe
   parsFull <- parsFull %>%
-    separate("variable", c("enduse", "carrier"), sep = "\\.") %>%
     mutate(region = "GLO") %>%
     select("region", "carrier", "enduse", "Asym", "R0", "lrc")
 

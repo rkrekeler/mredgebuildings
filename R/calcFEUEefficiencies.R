@@ -16,11 +16,13 @@
 #' @author Hagen Tockhorn
 #'
 #' @importFrom stats SSasymp
+#' @importFrom dplyr reframe
 #'
 #' @export
 
 
 calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
+
   # READ-IN DATA ---------------------------------------------------------------
 
   pfu <- calcOutput("PFUDB", aggregate = FALSE) %>%
@@ -28,9 +30,6 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
 
   gdppop <- calcOutput("GDPPop", aggregate = FALSE) %>%
     as.quitte()
-
-  # parsCorr <- read.csv("correct_efficiencies.csv", sep = ";")
-  parsCorr <- toolGetMapping("correct_efficiencies.csv", type = "sectoral")
 
 
   # PARAMETERS -----------------------------------------------------------------
@@ -62,28 +61,6 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
     select(-"model", -"scenario", -"region", -"unit", -"period")
 
 
-  # Tediously transform the corrected parameters ... must be a better solution
-  parsCorr <- parsCorr %>%
-    mutate("space_cooling.elec" = gsub(" ", "", .data[["space_cooling.elec"]]),
-           "space_cooling.elec" = gsub("\\,", "\\.", .data[["space_cooling.elec"]]),
-           "space_cooling.elec" = as.numeric(.data[["space_cooling.elec"]])) %>%
-    gather(key = "variable", value = "value", "space_cooling.elec", "water_heating.elec", "space_heating.elec") %>%
-    spread(key = "parameter", value = "value") %>%
-    separate(col = "variable", into = c("enduse", "carrier"), sep = "\\.") %>%
-    select(-"phi3") %>%
-    rename(AsymCorr = "Asym", lrcCorr = "lrc", R0Corr = "R0")
-
-
-
-  # Correct Regression Parameters for electrical Heat Transfer Technologies
-  regPars <- regPars %>%
-    left_join(parsCorr, by = c("carrier", "enduse")) %>%
-    mutate(Asym = ifelse(is.na(.data[["AsymCorr"]]), .data[["Asym"]], .data[["AsymCorr"]]),
-           R0 = ifelse(is.na(.data[["R0Corr"]]), .data[["R0"]], .data[["R0Corr"]]),
-           lrc = ifelse(is.na(.data[["lrcCorr"]]), .data[["lrc"]], .data[["lrcCorr"]])) %>%
-    select(-"AsymCorr", -"R0Corr", -"lrcCorr")
-
-
   # Assign Parameters to carrier-enduse Combination
   dataHist <- data %>%
     removeColNa() %>%
@@ -109,10 +86,6 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
     select(-"gdppop", -"efficiency", -"pred") %>%
     interpolate_missing_periods(value = "factor", expand.values = TRUE)
 
-
-  # NOTE: Countries missing the entire period range for a EC-EU-combination
-  #       will be filled-up w/ non-corrected efficiency projections.
-
   dataHist <- dataHist %>%
     left_join(corrFactors, by = c("region", "period", "enduse", "carrier")) %>%
     mutate(value = ifelse(is.na(.data[["factor"]]),
@@ -124,10 +97,10 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
                                         .data[["efficiency"]]))))
 
 
-
   # Trim Dataframe
   efficiencies <- dataHist %>%
-    select(-"gdppop", -"efficiency", -"pred", -"factor")
+    select(-"gdppop", -"efficiency", -"pred", -"factor") %>%
+    mutate(scenario = "history")
 
 
   #--- Corrections
@@ -151,11 +124,13 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
 
   # FE Weights
   feWeights <- pfu %>%
-    interpolate_missing_periods(period = seq(1990, 2020)) %>%
+    interpolate_missing_periods(period = seq(1990, 2020), expand.values = TRUE) %>%
     filter(unit == "fe") %>%
     semi_join(efficiencies, by = c("region", "period", "carrier", "enduse")) %>%
+    group_by(across(all_of(c("period", "region")))) %>%
+    reframe(value = sum(.data[["value"]], na.rm = TRUE)) %>%
     mutate(value = replace_na(.data[["value"]], 0)) %>%
-    select("region", "period", "carrier", "enduse", "value") %>%
+    as.quitte() %>%
     as.magpie()
 
 
@@ -164,6 +139,7 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
   # Weights = FE?
 
   efficiencies <- efficiencies %>%
+    as.quitte() %>%
     as.magpie()
 
   return(list(

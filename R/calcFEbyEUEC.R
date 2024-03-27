@@ -123,6 +123,7 @@ calcFEbyEUEC <- function() {
                                  .data[["value"]],
                                  sum(.data[["value"]], na.rm = T) * .data[["share"]]),
                           .data[["value"]] * (1 - .data[["share"]]))) %>%
+    ungroup() %>%
     select(-"share")
 
   dataFull <- rbind(dataCorr,
@@ -136,13 +137,14 @@ calcFEbyEUEC <- function() {
   # RETURN DATA ----------------------------------------------------------------
 
   # Pack Data
-  ieaIO <- ieaIO %>%
+  dataFull <- dataFull %>%
+    mutate(scenario = "history") %>%
     as.quitte() %>%
     as.magpie() %>%
     toolCountryFill(1, verbosity = 2)
 
   data <- list(
-    x = ieaIO,
+    x = dataFull,
     weight = NULL,
     unit = "EJ",
     description = "Historic Final Energy Data from IEA"

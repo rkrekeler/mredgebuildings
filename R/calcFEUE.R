@@ -30,7 +30,7 @@ calcFEUE <- function() {
 
   # READ-IN DATA ---------------------------------------------------------------
 
-  fe <- calcOutput("FEbyEUEC", aggregate = TRUE, regionmapping = "regionmappingISO-EDGE_EUR_ETP.csv") %>%
+  fe <- calcOutput("FEbyEUEC", aggregate = FALSE) %>%
     as.quitte()
 
 
@@ -40,24 +40,33 @@ calcFEUE <- function() {
 
   # PROCESS DATA ---------------------------------------------------------------
 
-  efficiencies <- rename(efficiencies, efficiency = "value")
+  # cut datasets
+  fe <- fe %>%
+    select("region", "period", "enduse", "carrier", "unit", "value")
 
+  efficiencies <- efficiencies %>%
+    select("region", "period", "enduse", "carrier", "value") %>%
+    rename("efficiency" = "value")
+
+
+  # calculate useful energy
   ue <- fe %>%
     sumDF(c("appliances", "lightning"), "appliances_light") %>%
     spread("unit", "value") %>%
     left_join(efficiencies,
-              by = c("model", "scenario", "region", "variable",
-                     "period", "carrier", "enduse")) %>%
+              by = c("region", "period", "enduse", "carrier")) %>%
     mutate(ue = .data[["fe"]] * .data[["efficiency"]]) %>%
     gather("unit", "value", "fe", "ue") %>%
-    select(-"efficiency")
+    select(-"efficiency") %>%
+    mutate(scenario = "history")
 
 
   # OUTPUT ---------------------------------------------------------------------
 
   ue <- ue %>%
     as.quitte() %>%
-    as.magpie()
+    as.magpie() %>%
+    toolCountryFill()
 
   return(list(
     x = ue,
