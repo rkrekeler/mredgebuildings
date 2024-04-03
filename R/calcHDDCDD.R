@@ -1,8 +1,8 @@
 #' Calculate HDD and CDD based on outdoor/indoor temperature difference
 #'
-#' @description heating and cooling degree days based on raw outside temperature
-#'   or bias-adjusted internal temperature (BAIT), driver for space heating and
-#'   cooling demand in buildings
+#' Heating and cooling degree days based on raw outside temperature
+#' or bias-adjusted internal temperature (BAIT), driver for space heating and
+#' cooling demand in buildings.
 #'
 #' @param mappingFile file name of sectoral mapping containing input data file names and directories
 #' @param bait boolean, use BAIT instead of raw temperature
@@ -61,7 +61,7 @@ calcHDDCDD <- function(mappingFile,
     print(paste("Processing temperature file:", ftas))
 
     if (bait) {
-      hddcddCell <- calcStackHDDCDD(ftas,
+      hddcddCell <- compStackHDDCDD(ftas,
                                     tLim,
                                     countries,
                                     pop,
@@ -74,7 +74,7 @@ calcHDDCDD <- function(mappingFile,
                                     params = params,
                                     rasDir = rasDir)
     } else {
-      hddcddCell <- calcStackHDDCDD(ftas,
+      hddcddCell <- compStackHDDCDD(ftas,
                                     tLim,
                                     countries,
                                     pop,
@@ -183,7 +183,7 @@ calcHDDCDD <- function(mappingFile,
   # PROCESS DATA----------------------------------------------------------------
 
   # calculate HDD/CDD-factors
-  hddcddFactor <- calcHDDCDDFactors(tlow = tlow, tup = tup, tLim, tambStd, tlimStd)
+  hddcddFactor <- compHDDCDDFactors(tlow = tlow, tup = tup, tLim, tambStd, tlimStd)
 
 
   # full calculation of degree days
@@ -496,7 +496,7 @@ blend <- function(bait, tas, weight) {
 #'
 #' @return raster object with BAIT values
 
-calcBAIT <- function(baitInput, tasData, weight = NULL, params = NULL) {
+compBAIT <- function(baitInput, tasData, weight = NULL, params = NULL) {
   if (is.null(weight)) {
     warning("Please give appropriate weights for the calculation of BAIT.")
     weight <- list("wRSDS"  = 0.012,
@@ -572,7 +572,7 @@ calcBAIT <- function(baitInput, tasData, weight = NULL, params = NULL) {
 #' @importFrom stats dnorm
 #' @importFrom pracma integral2
 
-calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
+compHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
 
   # t1 : ambient temperature variable
   # t2 : limit temperature variable
@@ -687,7 +687,7 @@ calcHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
 #'
 #' @importFrom terra classify tapp
 
-calcCellHDDCDD <- function(temp, typeDD, tlim, factors) {
+compCellHDDCDD <- function(temp, typeDD, tlim, factors) {
   # extract years
   dates <- names(temp)
 
@@ -788,7 +788,7 @@ aggCells <- function(data, weight, mask) {
 #' @importFrom stringr str_split
 #' @importFrom terra writeCDF
 
-calcStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
+compStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
                             frsds = NULL,
                             fsfc  = NULL,
                             fhuss = NULL,
@@ -811,7 +811,7 @@ calcStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
       checkDates(tasData)
 
     # calculate bait
-    temp <- calcBAIT(baitInput, tasData, weight = wBAIT, params = params)
+    temp <- compBAIT(baitInput, tasData, weight = wBAIT, params = params)
 
     # convert back to [K]
     temp <- temp + 273.15   # [K]
@@ -834,7 +834,7 @@ calcStackHDDCDD <- function(ftas, tlim, countries, pop, factors, bait,
         do.call(
           "rbind", lapply(
             tlim[[typeDD]], function(t) {
-              hddcddAgg <- calcCellHDDCDD(temp, typeDD, t, factors)
+              hddcddAgg <- compCellHDDCDD(temp, typeDD, t, factors)
 
               # write raster files
               if (!is.null(rasDir)) {
