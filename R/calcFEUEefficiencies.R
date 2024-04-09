@@ -7,7 +7,7 @@
 #' assumed efficiency levels. The parameters of that curve are derived by a
 #' regression with observations of IEA data.
 #'
-#' @param gasBioEquality Determines if Natgas and Biomod share the same efficiencies
+#' @param gasBioEquality Determines if carriers natgas and biomod share the same efficiencies
 #'
 #' @references De Stercke, S. (2014). Dynamics of Energy Systems: A Useful
 #' Perspective (Interim Report, p. 68). IIASA.
@@ -30,6 +30,12 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
 
   gdppop <- calcOutput("GDPPop", aggregate = FALSE) %>%
     as.quitte()
+
+
+  # regression parameter corrections
+  parsCorr <- toolGetMapping(name  = "correct_efficiencies.csv",
+                             type  = "sectoral",
+                             where = "mredgebuildings")
 
 
   # PARAMETERS -----------------------------------------------------------------
@@ -60,7 +66,6 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
     spread(key = "variable", value = "value") %>%
     select(-"model", -"scenario", -"region", -"unit", -"period")
 
-
   # Assign Parameters to carrier-enduse Combination
   dataHist <- data %>%
     removeColNa() %>%
@@ -80,11 +85,21 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
 
   #--- Match Region-Specific Curves to fill non-existing Data Points
 
+  # Extract corrected carrier/enduse combinations
+  euecCorr <- paste(parsCorr$enduse, parsCorr$carrier, sep = ".")
+
   # Create Correction Factor to adjust Projections
   corrFactors <- dataHist %>%
     mutate(factor = .data[["efficiency"]] / .data[["pred"]]) %>%
     select(-"gdppop", -"efficiency", -"pred") %>%
-    interpolate_missing_periods(value = "factor", expand.values = TRUE)
+    interpolate_missing_periods(value = "factor", expand.values = TRUE) %>%
+
+    # set correction factors to NA for corrected regression parameters
+    mutate(factor = ifelse(paste(.data[["enduse"]], .data[["carrier"]], sep = ".") %in% euecCorr,
+                           NA,
+                           .data[["factor"]]))
+
+
 
   dataHist <- dataHist %>%
     left_join(corrFactors, by = c("region", "period", "enduse", "carrier")) %>%

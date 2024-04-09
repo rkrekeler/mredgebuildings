@@ -265,7 +265,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
   }
 
   # calculate HDD/CDD values per day for given ambient/limit temp combination
-  calcHDDCDDFactors <- function(tlow, tup, tlim, tamb_std=5, tlim_std=5) {
+  calcHDDCDDFactors <- function(tlow, tup, tlim, tamb_std=5, tlim_std=5, norm) {
     t <- seq(tlow, tup, .1)
 
     hddcddFactors <- do.call(
@@ -285,7 +285,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
                                           "factor_err"   = 0,
                                           "typeDD"       = typeDD)
                       }
-                      else {
+                      else if (norm) {
 
                         # integration boundaries
                         x1 <- .tlim - 4*tlim_std
@@ -324,6 +324,29 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
                                           "factor"       = f$Q,
                                           "factor_err"   = f$error,
                                           "typeDD"       = typeDD)
+                      }
+                      else {
+                        if (typeDD == "HDD") {
+                          degDays <- .tlim - tamb
+                          degDays[degDays < 0] <- 0
+
+                          tmp <- data.frame("T_amb"        = tamb,
+                                            "T_amb_K"      = round(tamb + 273.15, 1),
+                                            "T_lim"        = .tlim,
+                                            "factor"       = degDays,
+                                            "factor_err"   = 0,
+                                            "typeDD"       = typeDD)
+                        } else {
+                          degDays <- tamb - .tlim
+                          degDays[degDays < 0] <- 0
+
+                          tmp <- data.frame("T_amb"        = tamb,
+                                            "T_amb_K"      = round(tamb + 273.15, 1),
+                                            "T_lim"        = .tlim,
+                                            "factor"       = degDays,
+                                            "factor_err"   = 0,
+                                            "typeDD"       = typeDD)
+                        }
                       }
                     }
                   )
@@ -562,7 +585,7 @@ calcHDDCDD <- function(mappingFile, bait=FALSE, multiscen = FALSE) {
   # threshold temperature for heating and cooling [C]
   # NOTE: Staffel gives global average of T_heat = 14, T_cool = 20
   # t_lim <- list("HDD" = seq(12, 18), "CDD" = seq(20, 26))
-  t_lim <- list("HDD" = seq(14), "CDD" = seq(22))
+  t_lim <- list("HDD" = c(14), "CDD" = c(22))
 
   # standard deviations for temperature distributions
   tlim_std <- 5   # threshold

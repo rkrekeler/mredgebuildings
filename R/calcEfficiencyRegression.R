@@ -74,7 +74,6 @@ calcEfficiencyRegression <- function() {
   minEfficiency <- 0.05
 
 
-
   # PROCESS DATA ---------------------------------------------------------------
 
   #--- Calculate existing FE-EU efficiencies
@@ -143,17 +142,9 @@ calcEfficiencyRegression <- function() {
 
   # CORRECTIONS ----------------------------------------------------------------
 
-  # Tediously transform the corrected parameters ... must be a better solution
+  # Rename corrected parameters
   parsCorr <- parsCorr %>%
-    mutate("space_cooling.elec" = gsub(" ", "", .data[["space_cooling.elec"]]),
-           "space_cooling.elec" = gsub("\\,", "\\.", .data[["space_cooling.elec"]]),
-           "space_cooling.elec" = as.numeric(.data[["space_cooling.elec"]])) %>%
-    gather(key = "variable", value = "value", "space_cooling.elec", "water_heating.elec", "space_heating.elec") %>%
-    spread(key = "parameter", value = "value") %>%
-    separate(col = "variable", into = c("enduse", "carrier"), sep = "\\.") %>%
-    select(-"phi3") %>%
     rename(AsymCorr = "Asym", lrcCorr = "lrc", R0Corr = "R0")
-
 
 
   # Correct Regression Parameters for electrical Heat Transfer Technologies

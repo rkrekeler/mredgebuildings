@@ -48,7 +48,7 @@ calcPFUDB <- function() {
   # fridge share of Europe (see calcShares)
   fridgeShare <- 0.17
 
-  endOfHistory <- 1990
+  periodBegin <- 1990
 
 
 
@@ -91,8 +91,9 @@ calcPFUDB <- function() {
     select("region", "regionAgg")
 
   # Enduse Mappings
-  enduseMapping <- toolGetMapping("enduseMap_PFUDB.csv", "sectoral",
-                                  "mredgebuildings")
+  enduseMapping <- toolGetMapping(name  = "enduseMap_PFUDB.csv",
+                                  type  = "sectoral",
+                                  where = "mredgebuildings")
 
 
 
@@ -148,6 +149,13 @@ calcPFUDB <- function() {
     mutate(value = ifelse(is.na(.data[["value"]]),
                           0,
                           .data[["value"]])) %>%
+    filter(.data[["enduse"]] != "lighting") %>%
+    mutate(value = .data[["value"]] * ifelse(.data[["enduse"]] != "appliances",
+                                             1,
+                                             fridgeShare),
+           enduse = ifelse(.data[["enduse"]] == "appliances",
+                           "refrigerators",
+                           as.character(.data[["enduse"]]))) %>%
     group_by(across(all_of(c("region", "period", "carrier")))) %>%
     mutate(value = proportions(.data[["value"]])) %>%
     ungroup()
@@ -169,7 +177,8 @@ calcPFUDB <- function() {
                 select("region", "period", "carrier", "enduse", "value") %>%
                 rename(share = "value"),
               by = c("region", "period", "carrier")) %>%
-    mutate(value = .data[["value"]] * .data[["share"]]) %>%
+    mutate(value = .data[["value"]] * .data[["share"]],
+           value = replace_na(.data[["value"]], 0)) %>%
     select(-"share")
 
 
@@ -219,7 +228,7 @@ calcPFUDB <- function() {
 
   # Select data above lower history boundary
   pfuRes <- pfuRes %>%
-    filter(.data[["period"]] >= endOfHistory)
+    filter(.data[["period"]] >= periodBegin)
 
 
 

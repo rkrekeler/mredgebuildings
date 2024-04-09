@@ -11,6 +11,7 @@
 
 
 calcFEUE <- function() {
+
   # FUNCTIONS ------------------------------------------------------------------
 
   # Aggregate to Enduse-Level
@@ -51,8 +52,12 @@ calcFEUE <- function() {
 
   # calculate useful energy
   ue <- fe %>%
-    sumDF(c("appliances", "lightning"), "appliances_light") %>%
+
+    # unite enduses "appliances" and "lighting"
+    sumDF(c("appliances", "lighting"), "appliances_light") %>%
     spread("unit", "value") %>%
+
+    # calculate useful energy with conversion efficiencies
     left_join(efficiencies,
               by = c("region", "period", "enduse", "carrier")) %>%
     mutate(ue = .data[["fe"]] * .data[["efficiency"]]) %>%
