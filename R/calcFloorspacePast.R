@@ -23,6 +23,7 @@
 #' @export
 
 calcFloorspacePast <- function() {
+
   # FUNCTIONS ------------------------------------------------------------------
 
   # specific floor space from absolute floor space and population
@@ -34,49 +35,14 @@ calcFloorspacePast <- function() {
       mutate(demographic = "Total")
   }
 
-  # NOTE: The parameters I have used here, come from the linear regression done
-  # by Antoine Levesque. The parameters can be found on
-  # https://doi.org/10.1016/j.energy.2018.01.139
-  #
-  # The extrapolation is done with the formula:
-  #   Floorspace = alpha * GDPPop^beta * PopDensity^gamma #nolint
-  #
-  # Another idea would be to re-calibrate the parameters on our disaggregated
-  # data and then take the mean, since a general correlation between floorspace
-  # and GDP is seeked for. However, I would expect no significant deviation here.
 
-  # extrapolate missing entries with GDP/Cap and Population Density
-  extrapolate <- function(df, gdppop, dens, vars) {
-    # Clean DFs
-    g <- gdppop %>%
-      select(-"model", -"scenario", -"variable", -"unit") %>%
-      rename(gdppop = "value")
+  # PARAMETERS -----------------------------------------------------------------
 
-    d <- dens %>%
-      select(-"model", -"scenario", -"variable", -"unit", -"data") %>%
-      rename(density = "value")
+  # lower temporal boundary for historical data
+  periodBegin <- 1990
 
-    # Join DFs
-    data <- df %>%
-      quitte::factor.data.frame() %>%
-      interpolate_missing_periods(period = seq(1990, 2020)) %>%
-      as.magpie() %>%
-      toolCountryFill() %>%
-      as.quitte() %>%
-      droplevels() %>%
-      left_join(g, by = c("region", "period")) %>%
-      left_join(d, by = c("region", "period"))
-
-
-    # Extrapolate Values
-    data <- data %>%
-      mutate(value = ifelse(is.na(.data[["value"]]),
-                            vars[1] * (.data[["gdppop"]]**vars[2]) * (.data[["density"]]**vars[3]),
-                            .data[["value"]])) %>%
-      select(-"gdppop", -"density")
-
-    return(data)
-  }
+  # upper temporal boundary for historical data
+  endOfHistory <- 2020
 
 
   # LOAD AND CALCULATE DATA ----------------------------------------------------
@@ -129,16 +95,15 @@ calcFloorspacePast <- function() {
   dens <- calcOutput("Density", aggregate = FALSE) %>%
     as.quitte()
 
+
+
+  # PROCESS DATA ---------------------------------------------------------------
+
   # compute specific floor space
   eea <- floorPerCap(eea, pop)
   ind <- floorPerCap(ind, pop)
 
-  # Regression variables are given in [alpha,beta,gamma]
-  vars <- c(exp(-0.49), 0.42, -0.03)
-
-
-  # JOIN DATA ------------------------------------------------------------------
-
+  # bind datasets
   data <- rbind(eea, ind)
   data <- data %>%
     rbind(anti_join(daioglou, data, by = c("period", "region", "demographic",
@@ -164,7 +129,8 @@ calcFloorspacePast <- function() {
   # remove urban and rural data and extrapolate missing entries
   data <- data %>%
     filter(.data[["demographic"]] == "Total") %>%
-    extrapolate(gdppop, dens, vars)
+    makeFloorspaceProjection(gdppop, dens, endOfHistory, periodBegin) %>%
+    mutate(scenario = "history")
 
 
 
@@ -187,4 +153,139 @@ calcFloorspacePast <- function() {
               min = 0,
               unit = "m2/cap",
               description = "floor space per capita"))
+}
+
+
+#' Predict missing historic floorspace data
+#'
+#' A linear regression is performed to establish a general relationship between
+#' floorspace per capita and gdp per capita and population density.
+#' Predicted values are corrected w.r.t. to historical data where available,
+#' otherwise the prediction is chosen.
+#'
+#' @param df data.frame containing floorspace per capita
+#' @param gdppop data.frame containing gdp per capita
+#' @param dens data.frame containing population density
+#'
+#' @return floorspace per capita with filled missing entries
+
+makeFloorspaceProjection <- function(df, gdppop, dens, endOfHistory, periodBegin) {
+  # Clean DFs
+  g <- gdppop %>%
+    select(-"model", -"scenario", -"variable", -"unit") %>%
+    rename(gdppop = "value")
+
+  d <- dens %>%
+    select(-"model", -"scenario", -"variable", -"unit", -"data") %>%
+    rename(density = "value")
+
+  # create full data set
+  dataFull <- data %>%
+    filter(.data[["demographic"]] == "Total") %>%
+    quitte::factor.data.frame() %>%
+    interpolate_missing_periods(period = seq(periodBegin, endOfHistory)) %>%
+    as.magpie() %>%
+    toolCountryFill() %>%
+    as.quitte() %>%
+    droplevels() %>%
+    left_join(g, by = c("region", "period")) %>%
+    left_join(d, by = c("region", "period"))
+
+  # estimation data set
+  dataEstimate <- dataFull %>%
+    filter(!is.na(.data[["value"]]))
+
+  # make linear regression to obtain estimate
+  estimate <- lm(log(value) ~ 1 + log(gdppop) + log(density), data = dataEstimate)
+
+  # predict missing data
+  dataPred <- dataFull %>%
+
+    # make prediction with regressed parameters
+    mutate(pred = exp(predict(estimate, newdata = dataFull))) %>%
+
+    # create correction factor to balance-out deviations w.r.t. historic data
+    group_by(across(all_of("region"))) %>%
+    mutate(factor = .data[["value"]] / .data[["pred"]]) %>%
+
+    # regress "factor" for all periods
+    group_modify(~ extrapolateMissingPeriods(.x, key = "factor", slopeOfLast = 20)) %>%
+    ungroup() %>%
+
+    # correct prediction deviations if factor is available
+    mutate(pred = ifelse(is.na(.data[["factor"]]),
+                         .data[["pred"]],
+                         .data[["pred"]] * .data[["factor"]])) %>%
+
+    # fill missing values w/ predictions
+    mutate(value = ifelse(is.na(.data[["value"]]),
+                          .data[["pred"]],
+                          .data[["value"]])) %>%
+
+    # select columns
+    select("region", "period", "variable", "unit", "demographic", "value")
+
+  return(dataPred)
+}
+
+
+#' Extrapolate missing values beyond existing periods
+#'
+#' @param chunk grouped data.frame
+#' @param key column holding values for extrapolation
+#' @param slopeOfLast number of values for boundary regression
+#'
+#' @return data.frame with extrapolated column \code{key}
+
+extrapolateMissingPeriods <- function(chunk, key, slopeOfLast = 5) {
+  # remove NAs
+  outChunk <- chunk
+  chunk <- chunk[!is.na(chunk[[key]]), ]
+
+  # not enough values available for regression
+  if (nrow(chunk) < 2) {
+    # constant value
+    if (nrow(chunk) == 1) {
+      outChunk[[key]] = unique(chunk[[key]])
+    }
+    # no value
+    else {
+      outChunk[[key]] <- NA
+    }
+  }
+
+  else {
+    upperPeriod <- max(chunk$period)
+    lowerPeriod <- min(chunk$period)
+
+    form <- as.formula(paste(key, "~ period"))
+
+    # linear regression at upper and lower end
+    mUpper <- lm(form, tail(arrange(chunk, "period"), slopeOfLast))
+    mLower <- lm(form, head(arrange(chunk, "period"), slopeOfLast))
+
+    # extrapolate both ends
+    outChunk[["valueUpper"]] <- predict(mUpper, newdata = outChunk["period"])
+    outChunk[["valueLower"]] <- predict(mLower, newdata = outChunk["period"])
+
+    # shift extrapolation to match last data points
+    outChunk[["valueUpper"]] <- outChunk[["valueUpper"]] *
+      as.numeric(outChunk[outChunk$period == upperPeriod, key] /
+                   outChunk[outChunk$period == upperPeriod, "valueUpper"])
+    outChunk[["valueLower"]] <- outChunk[["valueLower"]] *
+      as.numeric(outChunk[outChunk$period == lowerPeriod, key] /
+                   outChunk[outChunk$period == lowerPeriod, "valueLower"])
+
+    # fill missing lower/upper ends
+    outChunk[[key]] <- ifelse(outChunk[["period"]] > max(chunk$period),
+                              outChunk[["valueUpper"]],
+                              outChunk[[key]])
+    outChunk[[key]] <- ifelse(outChunk[["period"]] < min(chunk$period),
+                              outChunk[["valueLower"]],
+                              outChunk[[key]])
+    outChunk[["valueUpper"]] <- NULL
+    outChunk[["valueLower"]] <- NULL
+  }
+
+  return(outChunk)
 }
