@@ -16,26 +16,33 @@
 #' @author Hagen Tockhorn
 #'
 #' @importFrom terra regress rast
-#' @importFrom quitte removeColNa
+#' @importFrom madrat toolGetMapping
 #' @importFrom magclass as.magpie
+#' @importFrom madrat readSource
 
 
 calcBAITpars <- function(model = "GFDL-ESM4") {
 
   # READ-IN DATA----------------------------------------------------------------
 
-  files <- toolGetMapping("baitregression-files.csv", type = "sectoral") %>%
+  files <- toolGetMapping("baitregression-files_test.csv", type = "sectoral") %>%
     filter(.data[["gcm"]] == model)
 
   vars <- unique(files$variable)
 
+  # nolint start
   data <- sapply(vars, function(v) {
-    tmp <- sapply(files[files$variable == v,]$file, function(f) {
-      return(readSource("ISIMIPbuildings", subtype = f))},
-      USE.NAMES = FALSE) %>%
+    tmp <- sapply(files[files$variable == v, ]$file,
+                  function(f) {
+                    return(readSource("ISIMIPbuildings", subtype = f))
+                    },
+                  USE.NAMES = FALSE) %>%
       rast()
+
+    return(tmp)
   },
   USE.NAMES = TRUE)
+  # nolint end
 
   print("Reading completed")
 
@@ -50,6 +57,7 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
   data$tas <- data$tas - 273.15
 
 
+  # nolint start
   regPars <- sapply(vars[vars != "tas"], function(v) {
     x <- data[["tas"]]
     y <- data[[v]]
@@ -61,6 +69,7 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
   },
   USE.NAMES = FALSE) %>%
     rast()
+  # nolint end
 
 
 
@@ -70,7 +79,4 @@ calcBAITpars <- function(model = "GFDL-ESM4") {
               class = "SpatRaster",
               unit = "(unit)",
               description = "Regression parameters for calcHDDCDD"))
-
 }
-
-

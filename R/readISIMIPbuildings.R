@@ -1,18 +1,20 @@
 #' Read relevant ISIMIP data for mredgebuildings
 #'
+#' Relevant data such as region masks, population and relevant climate data are
+#' read in. The relevant file is declared in the subtype with the full file name.
+#'
+#' If the file name includes a suffix in the form of an integer such as
+#' \code{_<int>.filetype}, the file is split into a single year period, e.g.
+#' \code{<filename>_2001_2010_2.nc} will return data for the second year of the
+#' 2001-2010 period, here 2002.
 #'
 #' @param subtype filename
 #'
 #' @author Hagen Tockhorn
 #'
 #' @importFrom stringr str_split
-#' @importFrom raster brick dropLayer res extent aggregate
-#'
-#' @note
-#' Argument subtype consist of full filenames of the respective raster files. In
-#' order to improve runtime and general problems that come with processing large
-#' raster files, filenames marked with "_A" or "_B" before the filetype declaration,
-#' will be split in the respective first and second half of the dataset.
+#' @importFrom terra rast subset aggregate ext res
+#' @importFrom ncdf4 nc_open
 #'
 #' @note
 #' folder structure in inputdata/sources/ISIMIPbuildings is expected to be:
@@ -37,8 +39,9 @@ readISIMIPbuildings <- function(subtype) {
   splitSubtype <- function(subtype) {
     vars <- list()
 
+    # nolint start
     if (grepl("countrymask", subtype)) {
-      vars[["variable"]] = "countrymask"
+      vars[["variable"]] <- "countrymask"
     }
 
     else if (grepl("population", subtype)) {
@@ -55,117 +58,123 @@ readISIMIPbuildings <- function(subtype) {
       vars[["scenario"]] <- subSplit[[4]]
       vars[["model"]]    <- subSplit[[1]]
 
-      if (grepl("A", tail(subSplit, 1))) {
-        vars[["yStart"]] <- subSplit[[length(subSplit) - 2]]
+      # raster data will be split into individual years
+      if (length(subSplit) > 9) {
+        # split index defines the year
+        vars[["idx"]] <- gsub(".nc", "", tail(subSplit, 1)) %>%
+          as.numeric()
 
-        yEnd <- as.numeric(vars[["yStart"]]) + 4 # 5 year period
-        vars[["yEnd"]] <- as.character(yEnd)
+        # temporal range of data
+        vars[["yStart"]] <- subSplit[[8]]
+        vars[["yEnd"]]   <- subSplit[[9]]
 
-        vars[["subtype"]] <- sub("_A.nc", ".nc", subtype)
+        # year of interest
+        vars[["year"]] <- seq(vars[["yStart"]] %>%
+                                as.numeric(),
+                              vars[["yEnd"]] %>%
+                                as.numeric())[[vars[["idx"]]]] %>%
+          as.character()
+
+        vars[["subtype"]] <- sub("_(1[0-9]|\\d)\\.nc$", ".nc", subtype)
       }
-
-      else if (grepl("B", tail(subSplit, 1))) {
-        vars[["yEnd"]]   <- subSplit[[length(subSplit) - 1]]
-
-        yStart <- as.numeric(vars[["yEnd"]]) - 4 # 5 year period
-        vars[["yStart"]] <- as.character(yStart)
-
-        vars[["yStartFile"]] <- subSplit[[length(subSplit) - 2]]
-
-        vars[["subtype"]] <- sub("_B.nc", ".nc", subtype)
+    } else {
+        stop("Invalid subtype given.")
       }
-    }
-
-    else {stop("Invalid subtype given.")}
+    # nolint end
 
     return(vars)
   }
 
 
   # determine period range of subset
-  getIdxRange <- function(yStart, yEnd, vars) {
-    dStart <- as.Date(paste0(yStart, "-01-01"))
-    dEnd   <- as.Date(paste0(yEnd,   "-12-31"))
-    dRange <- seq.Date(from = dStart, to = dEnd, by = "day")
+  getRanges <- function(vars) {
+    # total temporal range
+    dRange <- seq.Date(from = as.Date(paste0(vars[["yStart"]], "-01-01")),
+                       to = as.Date(paste0(vars[["yEnd"]],   "-12-31")),
+                       by = "day")
 
-    if (is.null(vars[["yStartFile"]])) {
-      idx <- seq(1:length(dRange))
-    }
-    else {
-      dStartFile <- as.Date(paste0(vars[["yStartFile"]], "-01-01"))
-      dRangeFile <- seq.Date(from = dStartFile, to = dEnd, by = "day")
-      idx <- seq(length(dRangeFile) - length(dRange) + 1, length(dRangeFile))
-    }
+    # temporal range of interest
+    yRange <- seq.Date(from = as.Date(paste0(vars[["year"]], "-01-01")),
+                       to   = as.Date(paste0(vars[["year"]], "-12-31")),
+                       by   = "day")
 
-    return(idx)
+    # indices of range of interest
+    idxRange <- match(yRange, dRange)
+
+    return(list("yRange"   = yRange,
+                "idxRange" = idxRange))
   }
 
 
   # PROCESS DATA----------------------------------------------------------------
-
   vars <- splitSubtype(subtype)
 
-  if (vars[["variable"]] == "countrymask"){
-    fpath <- file.path("countrymasks", subtype)
-    varNames <- names(ncdf4::nc_open(fpath)[["var"]])
+  # region mask
+  if (vars[["variable"]] == "countrymask") {
+    fpath     <- file.path("countrymasks", subtype)
+    varNames  <- names(nc_open(fpath)[["var"]])
     countries <- list()
+
     for (var in varNames) {
-      countries[[var]] <- suppressWarnings(terra::rast(fpath, subds = var))
+      countries[[var]] <- suppressWarnings(rast(fpath, subds = var))
     }
-    r <- terra::rast(countries)
+
+    r        <- rast(countries)
     names(r) <- gsub("m_", "", varNames)
 
     x <- list(x = r, class = "SpatRaster")
   }
 
 
-  else if (vars[["variable"]] == "population") {
+  # population
+  else if (vars[["variable"]] == "population") { #nolint
     fpath <- file.path(vars[["variable"]], vars[["scenario"]], subtype)
 
     if (vars[["scenario"]] == "picontrol") {
-      r <- suppressWarnings(terra::rast(fpath))
-    }
-    else {
-      r <- suppressWarnings(terra::rast(fpath, subds = "total-population"))
+      r <- suppressWarnings(rast(fpath))
+    } else {
+      r <- suppressWarnings(rast(fpath, subds = "total-population"))
     }
 
     subtype <- gsub(".nc", "", subtype)
 
     # rename years
-    years <- tail(strsplit(subtype, "_")[[1]], 2)
-    names(r) <- paste0("y", years[1]:years[2])
+    years    <- tail(strsplit(subtype, "_")[[1]], 2)
+    names(r) <- years[1]:years[2]
 
     # filter relevant years
-    r <- terra::subset(r, as.numeric(substr(names(r), 2, 5)) > firstHistYear)
+    r <- subset(r, as.numeric(names(r)) >= firstHistYear)
 
     # aggregate to common resolution of 0.5 deg
-    if (any(raster::res(r) != 0.5)) {
-      r <- terra::aggregate(r, fun = "sum",
-                             fact = round(0.5 / terra::res(r), 3))
-      terra::res(r) <- 0.5
-      terra::ext(r) <- round(terra::ext(r))
+    if (any(res(r) != 0.5)) {
+      r <- aggregate(r, fun = "sum", fact = round(0.5 / res(r), 3))
     }
 
     x <- list(x = r, class = "SpatRaster", cache = FALSE)
   }
 
 
-  else if (any(vars[["variable"]] %in% baitVars)) {
-
+  # climate data
+  else if (any(vars[["variable"]] %in% baitVars)) { #nolint
+    # slice single years
     if (!is.null(vars[["yStart"]])) {
-      fpath <- file.path(vars[["variable"]], vars[["scenario"]], vars[["model"]], vars[["subtype"]])
-      idx <- getIdxRange(vars[["yStart"]], vars[["yEnd"]], vars)
-      r <- suppressWarnings(terra::rast(fpath, lyrs = idx))
+      fpath  <- file.path(vars[["variable"]], vars[["scenario"]], vars[["model"]], vars[["subtype"]])
+      ranges <- getRanges(vars)
+
+      r        <- suppressWarnings(rast(fpath, lyrs = ranges[["idxRange"]]))
+      names(r) <- ranges[["yRange"]]
     }
-    else {
+
+    # full data set
+    else { #nolint
       fpath <- file.path(vars[["variable"]], vars[["scenario"]], vars[["model"]], subtype)
-      r <- suppressWarnings(terra::rast(fpath))
+      r <- suppressWarnings(rast(fpath))
     }
 
     x <- list(x = r, class = "SpatRaster", cache = FALSE)
   }
 
-  else {stop("Subtype was incorrectly split or invalid subtype given.")}
+  else {stop("Subtype was incorrectly split or invalid subtype given.")} #nolint
 
   return(x)
 }
