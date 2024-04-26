@@ -76,7 +76,7 @@ calcLifetimeParams <- function(subtype) {
 
       # technologies given only with central estimate
       central <- inline.data.frame(
-        "subsector;     hs;   ean",
+        "subsector;     hs;  mean",
         "commercial;  ehp1;    21", # Commercial Rooftop Heat Pumps
         "commercial;  gabo;    25", # Commercial Gas-Fired Boilers
         "commercial;  reel;    18", # Commercial Electric Resistance Heaters

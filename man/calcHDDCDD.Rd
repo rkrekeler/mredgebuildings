@@ -27,9 +27,9 @@ calcHDDCDD(
 magpie object of heating and cooling degree days
 }
 \description{
-heating and cooling degree days based on raw outside temperature
+Heating and cooling degree days based on raw outside temperature
 or bias-adjusted internal temperature (BAIT), driver for space heating and
-cooling demand in buildings
+cooling demand in buildings.
 }
 \author{
 Robin Hasse, Hagen Tockhorn

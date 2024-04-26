@@ -11,7 +11,7 @@
 calcFloorspacePerCap <- function() {
 
   # TODO: get rid of the mrremind dependency # nolint: todo_comment_linter
-  fs <- readSource("EDGE", "Floorspace") %>%
+  fs <- readSource("EdgeBuildings", "Floorspace") %>%
     mselect(variable = "residential", collapseNames = TRUE)
   getItems(fs, "scenario") <- sub("gdp_", "", getItems(fs, "scenario"))
 
