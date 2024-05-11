@@ -32,6 +32,13 @@ calcFEbyEUEC <- function() {
   as.quitte()
 
 
+  # FE IEA EEI data
+  feIEAEEI <- calcOutput("IEA_EEI",
+                         subtype = "buildings",
+                         aggregate = FALSE) %>%
+    as.quitte()
+
+
   # EU Shares
   sharesEU <- calcOutput("Shares",
                          subtype = "enduse_nonthermal",
@@ -55,6 +62,11 @@ calcFEbyEUEC <- function() {
                             type  = "sectoral",
                             where = "mredgebuildings")
 
+  # European countries
+  eurCountries <- c("FIN", "AUT", "BEL", "BGR", "CYP", "CZE", "DEU", "DNK", "ESP",
+                    "EST", "FRA", "GBR", "GRC", "HRV", "HUN", "IRL", "ITA", "LTU",
+                    "LUX", "LVA", "MLT", "NLD", "POL", "PRT", "ROU", "SVK", "SVN",
+                    "SWE")
 
 
   # PROCESS DATA ---------------------------------------------------------------
@@ -69,17 +81,26 @@ calcFEbyEUEC <- function() {
 
   #--- Prepare toolDisaggregate Input
 
-  # Extract regions with existing disaggregated FE shares
-  replaceRegs <- feOdyssee %>%
-    filter(!is.na(.data[["value"]])) %>%
-    pull("region") %>%
-    droplevels() %>%
-    unique()
-
-  feOdyssee <- feOdyssee %>%
+  # Prepare already disaggregated data
+  feDisagg <- feOdyssee %>%
+    left_join(feIEAEEI, by = c("region", "period", "carrier", "enduse")) %>%
+    mutate(value = ifelse(is.na(.data[["value.x"]]),
+                          .data[["value.y"]],
+                          .data[["value.x"]])) %>%
+    # mutate(value = max(.data[["value.x"]], .data[["value.y"]])) %>%
     select("region", "period", "carrier", "enduse", "value") %>%
     mutate(unit = "fe") %>%
     semi_join(ieaIO, by = c("region", "period", "carrier"))
+
+
+  # Lower boundaries for disaggregation
+  lowerBounds <- feOdyssee %>%
+    select("region", "period", "carrier", "enduse", "value") %>%
+    filter(!is.na(.data[["value"]])) %>%
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    mutate(value = proportions(.data[["value"]]),
+           value = replace_na(.data[["value"]], 0)) %>%
+    ungroup()
 
 
   # Disaggregate FE with EU/EC Shares
@@ -88,15 +109,29 @@ calcFEbyEUEC <- function() {
     mutate(unit = "fe") %>%
     toolDisaggregate(enduseShares  = sharesEU,
                      exclude       = exclude,
-                     dataDisagg    = feOdyssee,
-                     regionMapping = regmapping) %>%
+                     dataDisagg    = feDisagg,
+                     regionMapping = regmapping,
+                     lowerBounds   = lowerBounds) %>%
     select("region", "period", "unit", "carrier", "enduse", "value")
 
+  # Identify full data sets region-carrier-enduse combinations
+  dataReplace <- feOdyssee %>%
+    group_by(across(all_of(c("region", "carrier", "enduse")))) %>%
+    filter(all(!is.na(.data[["value"]]))) %>%
+    reframe(replaceValue = .data[["value"]],
+            period = .data[["period"]])
 
-  data <- rbind(ieaIODis %>%
-                  filter(!(.data[["region"]] %in% replaceRegs)),
-                feOdyssee %>%
-                  filter(.data[["region"]] %in% replaceRegs))
+  data <- ieaIODis %>%
+    left_join(dataReplace, by = c("region", "carrier", "enduse", "period")) %>%
+    mutate(value = ifelse(!is.na(.data[["replaceValue"]]),
+                          .data[["replaceValue"]],
+                          .data[["value"]])) %>%
+    select(-"replaceValue")
+
+  # data <- rbind(ieaIODis %>%
+  #                 filter(!(.data[["region"]] %in% eurCountries)),
+  #               feDisagg %>%
+  #                 filter(.data[["region"]] %in% eurCountries))
 
 
   # CORRECTIONS ----------------------------------------------------------------

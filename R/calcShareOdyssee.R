@@ -43,8 +43,9 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
   # READ-IN DATA ---------------------------------------------------------------
 
   # Read Buildings Data
-  odyssee <- mbind(readSource("Odyssee", "households"),
-                   readSource("Odyssee", "services"))
+  odysseeData <- mbind(readSource("Odyssee", "households"),
+                   readSource("Odyssee", "services")) %>%
+    as.quitte()
 
   # Get GDP per Cap
   gdppop <- calcOutput("GDPPop", aggregate = FALSE) %>%
@@ -84,7 +85,7 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
   # PROCESS DATA ---------------------------------------------------------------
 
   # Map Variables
-  odyssee <- odyssee %>%
+  odyssee <- odysseeData %>%
     as.quitte() %>%
     filter(.data[["variable"]] %in% paste0(vars, "_EJ"),
            !is.na(.data[["value"]])) %>%
@@ -103,6 +104,54 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
       rename(variable = "carrier") %>%
       toolSplitBiomass(gdppop, varName = "biomod") %>%
       rename(carrier = "variable")
+  }
+
+  # Fill missing "appliances"/"lighting" entries if "appliances_light" has non-NA entries.
+  if (subtype %in% c("enduse", "enduse_carrier")) {
+    revalEnduse <- c(els = "appliances_light")
+    vars <- expand.grid(names(revalCarrier),
+                        names(revalSector),
+                        names(revalEnduse)) %>%
+      apply(1, "paste", collapse = "")
+
+    # mean distribution of FE between "appliances" and "lighting"
+    meanApplightShares <- odyssee %>%
+      filter(.data[["enduse"]] %in% c("lighting", "appliances"),
+             !is.na(.data[["value"]])) %>%
+      group_by(across(all_of(c("region", "period", "sector", "carrier")))) %>%
+      mutate(value = proportions(.data[["value"]])) %>%
+      ungroup() %>%
+      group_by(across(all_of(c("period", "sector", "enduse")))) %>%
+      mutate(share = mean(.data[["value"]])) %>%
+      ungroup() %>%
+      select(all_of(c("period", "carrier", "sector", "enduse", "share")))
+
+    # split existing aggregated data into "appliances" and "lighting"
+    applightData <- odysseeData %>%
+      filter(.data[["variable"]] %in% paste0(vars, "_EJ"),
+             !is.na(.data[["value"]])) %>%
+      mutate(region = droplevels(.data[["region"]]),
+             variable = gsub("_.*$", "", .data[["variable"]])) %>%
+      separate("variable", c("carrier", "sector", "enduse"), c(3, 8)) %>%
+      revalue.levels(carrier = revalCarrier,
+                     sector  = revalSector,
+                     enduse  = revalEnduse) %>%
+      interpolate_missing_periods(expand.values = TRUE) %>%
+      pivot_wider(names_from = "enduse", values_from = "value") %>%
+      left_join(meanApplightShares,
+                by = c("period", "carrier", "sector"),
+                relationship = "many-to-many") %>%
+      mutate(value = .data[["appliances_light"]] * .data[["share"]]) %>%
+      select(all_of(c("region", "period", "carrier", "enduse", "sector", "value"))) %>%
+      unique()
+
+    # replace missing values
+    odyssee <- rbind(odyssee,
+               applightData %>%
+                 anti_join(odyssee,
+                           by = c("region", "period", "carrier", "enduse", "sector")) %>%
+                 as.quitte() %>%
+                 select(-"variable"))
   }
 
   if (feOnly) {

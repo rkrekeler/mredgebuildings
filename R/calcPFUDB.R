@@ -16,6 +16,7 @@
 #' @export
 
 calcPFUDB <- function() {
+
   # FUNCTIONS ------------------------------------------------------------------
 
   # Sum to Carrier Level
@@ -30,6 +31,15 @@ calcPFUDB <- function() {
     df %>%
       filter(!(.data[["carrier"]] %in% variables)) %>%
       rbind(carrierSum)
+  }
+
+  # replace NA's only if not all values are NA
+  replaceNAwithZero <- function(x) {
+    if(all(is.na(x))) {
+      return(NA)
+    } else {
+      return(replace(x, is.na(x), 0))
+    }
   }
 
 
@@ -81,6 +91,13 @@ calcPFUDB <- function() {
     as.quitte()
 
 
+  # FE IEA EEI data
+  feIEAEEI <- calcOutput("IEA_EEI",
+                         subtype = "buildings",
+                         aggregate = FALSE) %>%
+    as.quitte()
+
+
 
   # Mappings
 
@@ -125,9 +142,27 @@ calcPFUDB <- function() {
 
   ## Prepare toolDisaggregate Input ====
 
+  # calculate enduse-carrier shares for IEA EEI data
+  sharesIEAEEI <- feIEAEEI %>%
+    group_by(across(all_of(c("region", "period")))) %>%
+    mutate(value = replaceNAwithZero(.data[["value"]]),
+           value = proportions(.data[["value"]])) %>%
+    ungroup()
+
+  sharesReplace <- sharesOdyssee %>%
+    left_join(sharesIEAEEI, by = c("region", "period", "carrier", "enduse")) %>%
+    mutate(value = ifelse(is.na(.data[["value.x"]]),
+                          .data[["value.y"]],
+                          .data[["value.x"]])) %>%
+    select("region", "period", "carrier", "enduse", "value")
+
   # note: hard-coded the fridge share so that the FE data becomes compliant with
   # the remaining input (can be done more nicely)
-  feOdyssee <- feOdyssee %>%
+  feDisagg <- feOdyssee %>%
+    left_join(feIEAEEI, by = c("region", "period", "carrier", "enduse")) %>%
+    mutate(value = ifelse(is.na(.data[["value.x"]]),
+                          .data[["value.y"]],
+                          .data[["value.x"]])) %>%
     select("region", "period", "carrier", "enduse", "value") %>%
     filter(.data[["enduse"]] != "lighting") %>%
     mutate(value = .data[["value"]] * ifelse(.data[["enduse"]] != "appliances",
@@ -137,14 +172,14 @@ calcPFUDB <- function() {
                            as.character(.data[["enduse"]])))
 
   # Extract regions with existing disaggregated FE shares
-  replaceRegs <- sharesOdyssee %>%
+  replaceRegs <- sharesReplace %>%
     filter(!is.na(.data[["value"]])) %>%
     pull("region") %>%
     droplevels() %>%
     unique()
 
   # re-aggregate Odyssee shares to carrier level
-  sharesOdyssee <- sharesOdyssee %>%
+  sharesReplace <- sharesReplace %>%
     filter(.data[["region"]] %in% replaceRegs) %>%
     mutate(value = ifelse(is.na(.data[["value"]]),
                           0,
@@ -160,6 +195,15 @@ calcPFUDB <- function() {
     mutate(value = proportions(.data[["value"]])) %>%
     ungroup()
 
+  # exclude specific carrier/enduse combinations
+  sharesReplace <- rbind(
+    sharesReplace %>%
+      semi_join(exclude, by = c("enduse", "carrier")) %>%
+      mutate(value = 0),
+    sharesReplace %>%
+      anti_join(exclude, by = c("enduse", "carrier"))
+  )
+
 
   sharesEU <- sharesEU %>%
     select("region", "period", "enduse", "value")
@@ -173,10 +217,11 @@ calcPFUDB <- function() {
     select(-"enduse") %>%
 
     # disaggregate with existing shares
-    left_join(sharesOdyssee %>%
+    left_join(sharesReplace %>%
                 select("region", "period", "carrier", "enduse", "value") %>%
                 rename(share = "value"),
-              by = c("region", "period", "carrier")) %>%
+              by = c("region", "period", "carrier"),
+              relationship = "many-to-many") %>%
     mutate(value = .data[["value"]] * .data[["share"]],
            value = replace_na(.data[["value"]], 0)) %>%
     select(-"share")
@@ -190,7 +235,7 @@ calcPFUDB <- function() {
     select(-"enduse") %>%
     toolDisaggregate(sharesEU,
                      exclude,
-                     feOdyssee,
+                     feDisagg,
                      regmapping) %>%
     select(colnames(pfuNonTherm))
 

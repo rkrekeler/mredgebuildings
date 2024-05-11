@@ -23,9 +23,11 @@
 #' @param dataDisagg data.frame similar to \code{data} but already disaggregated
 #'   by carriers and end uses. The average distribution of its disaggregation
 #'   will be used as the target distribution for the minisation.
-#' @param regionmapping data.frame with the columns \code{region} an
+#' @param regionmapping data.frame with the columns \code{region} and
 #'   \code{regionAgg} that maps the regions between \code{data} and
 #'   \code{enduseShares}.
+#' @param lowerBounds data.frame with existing energy demand data differentiated
+#'   by carriers and enduses that serve as lower bounds for the disaggregation
 #'
 #' @author Hagen Tockhorn, Robin Hasse
 #'
@@ -39,7 +41,8 @@ toolDisaggregate <- function(data,
                              enduseShares,
                              exclude = NULL,
                              dataDisagg = NULL,
-                             regionMapping = NULL) {
+                             regionMapping = NULL,
+                             lowerBounds = NULL) {
 
 
   # CHECK AND PREPARE INPUT ----------------------------------------------------
@@ -62,6 +65,7 @@ toolDisaggregate <- function(data,
   checkCols(exclude, "exclude", c("carrier", "enduse"))
   checkCols(dataDisagg, "dataDisagg", c("region", "enduse", "value", "enduse"))
   checkCols(regionMapping, "regionMapping", c("region", "regionAgg"))
+  checkCols(lowerBounds, "lowerBounds", c("region", "period", "carrier", "enduse", "value"))
 
 
   ## region mapping ====
@@ -105,7 +109,11 @@ toolDisaggregate <- function(data,
       anti_join(exclude, by = c("carrier", "enduse"))
   }
 
-  # browser()
+
+  ## lower disaggregation boundaries
+  lowerBounds <- lowerBounds %>%
+    select("region", "period", "carrier", "enduse", "value") %>%
+    rename("lowerBound" = "value")
 
 
   # GENERATE ESTIMATE ----------------------------------------------------------
@@ -179,7 +187,19 @@ toolDisaggregate <- function(data,
     mutate(enduseTotal = .data[["enduseShare"]] * .data[["total"]]) %>%
 
     # estimated disaggregation that should be met as closely as possible
-    join_all(estimate)
+    join_all(estimate) %>%
+
+    # lower boundaries for the disaggregation
+    left_join(lowerBounds,
+              by = c("region", "period", "carrier", "enduse")) %>%
+
+    # calculate lower boundaries w.r.t. total carrier energy demand
+    mutate(lowerBound = .data[["value"]] * .data[["lowerBound"]]) %>%
+
+    # filter enduse-related infeasibilities
+    mutate(lowerBound = ifelse(.data[["enduseTotal"]] < .data[["lowerBound"]],
+                               0,
+                               .data[["lowerBound"]]))
 
   dataOut <- dataOut %>%
 
@@ -187,8 +207,8 @@ toolDisaggregate <- function(data,
     filter(.data[["value"]] > 0) %>%
 
     # disaggregate demand  within each agg. region
-    group_by(across(-all_of(c("region", "carrier", "enduse", "estimate",
-                              "value", "enduseTotal", "enduseShare", "total")))) %>%
+    group_by(across(-all_of(c("region", "carrier", "enduse", "estimate", "value",
+                              "enduseTotal", "enduseShare", "total", "lowerBound")))) %>%
     group_modify(.disaggregate) %>%
     ungroup() %>%
 
@@ -200,7 +220,6 @@ toolDisaggregate <- function(data,
 
     # remove information on precision (can be kept for debugging)
     select(-"precision")
-
 
   return(dataOut)
 }
@@ -239,7 +258,6 @@ toolDisaggregate <- function(data,
   # end use quantities over minimising the deviations from the estimate
   # the estimate is often times rather arbitrary -> high weight
   weight <- 100
-
 
 
   # PREPARE DATA ---------------------------------------------------------------
@@ -284,10 +302,24 @@ toolDisaggregate <- function(data,
   # identity matrix
   identityMatrix <- diag(nrow(variables))
 
+  # lower value boundaries
+  lowBound <- subset %>%
+    select("region", "carrier", "enduse", "lowerBound") %>%
+    filter(!is.na(.data[["lowerBound"]])) %>%
+    unite(col = "variable", c("region", "carrier", "enduse"), sep = "-")
+
+
+  # replace 0's in right-hand side of constraints w/ lower bounds
+  matchIdx <- match(constraintRHS$zero$rhs, lowBound$variable)
+  matchVals <- lowBound$lowerBound[matchIdx]
+  constraintRHS$zero$value[!is.na(matchIdx)] <- matchVals[!is.na(matchIdx)]
+
+  browser()
+
   # first look for exact solution
   # If there is none, find one that matches end use quantities closely
   for (precision in c("exact", "close")) {
-    # for (precision in c("close")) {
+  # for (precision in c("close")) {
 
     # BUILD MATRICES -----------------------------------------------------------
 

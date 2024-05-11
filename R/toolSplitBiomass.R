@@ -26,6 +26,7 @@ toolSplitBiomass <- function(df,
                              min = 10000,
                              max = 15000,
                              varName = "biomass") {
+
   # FUNCTIONS ------------------------------------------------------------------
 
   # Returns share of modern Biomass
@@ -38,7 +39,6 @@ toolSplitBiomass <- function(df,
   # PARAMETERS -----------------------------------------------------------------
 
   bioComponents <- "^bio(mod|trad).$"
-
 
   # PROCESS DATA ---------------------------------------------------------------
 
@@ -71,7 +71,7 @@ toolSplitBiomass <- function(df,
 
   # Check for already existing Entries and add them up if existing
   bioCols <- grep(bioComponents, colnames(tmp), value = TRUE)
-  tmp[bioCols][is.na(tmp[bioCols])] <- 0
+  # tmp[bioCols][is.na(tmp[bioCols])] <- 0
 
   biomodNames <- grep("^biomod.$", bioCols, value = TRUE)
   biotradNames <- grep("^biotrad.$", bioCols, value = TRUE)

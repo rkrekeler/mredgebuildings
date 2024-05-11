@@ -338,7 +338,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
       # (However, this is a very practical fix...)
 
       sharesFull <- sharesFull %>%
-        mutate(value = ifelse(.data[["value"]] < 0, 0, .data[["value"]]))
+        mutate(value = ifelse(.data[["value"]] < 0, 1e-6, .data[["value"]]))
 
 
       # Merge Data
@@ -403,7 +403,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
       # (However, this is a very practical fix...)
 
       dataETPfull <- dataETPfull %>%
-        mutate(value = ifelse(.data[["value"]] < 0, 0, .data[["value"]]))
+        mutate(value = ifelse(.data[["value"]] < 0, 1e-6, .data[["value"]]))
 
       if (feOnly) {data  <- dataETPfull}
       else        {regFE <- dataETPfull}
