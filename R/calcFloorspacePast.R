@@ -16,7 +16,7 @@
 #' @importFrom madrat readSource calcOutput toolCountryFill
 #' @importFrom quitte as.quitte calc_addVariable factor.data.frame
 #' @importFrom dplyr filter mutate select anti_join group_by left_join %>%
-#' ungroup
+#' ungroup .data %>%
 #' @importFrom rlang .data
 #' @importFrom magclass mbind as.magpie collapseDim mselect
 #' @importFrom tidyr spread
@@ -166,6 +166,8 @@ calcFloorspacePast <- function() {
 #' @param df data.frame containing floorspace per capita
 #' @param gdppop data.frame containing gdp per capita
 #' @param dens data.frame containing population density
+#' @param endOfHistory upper temporal boundary of historic data
+#' @param periodBegin lower temporal boundary of historic data
 #'
 #' @return floorspace per capita with filled missing entries
 
@@ -182,7 +184,7 @@ makeFloorspaceProjection <- function(df, gdppop, dens, endOfHistory, periodBegin
 
 
   # create full data set
-  dataFull <- data %>%
+  dataFull <- df %>%
     filter(.data[["demographic"]] == "Total") %>%
     quitte::factor.data.frame() %>%
     interpolate_missing_periods(period = seq(periodBegin, endOfHistory)) %>%

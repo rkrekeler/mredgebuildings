@@ -25,6 +25,7 @@ Imports:
     GDPuc,
     ncdf4,
     openxlsx,
+    purrr,
     plyr,
     pracma,
     raster,
