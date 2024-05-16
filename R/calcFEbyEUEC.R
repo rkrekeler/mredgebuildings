@@ -87,26 +87,14 @@ calcFEbyEUEC <- function() {
 
   #--- Prepare toolDisaggregate Input
 
-  # Prepare already disaggregated data
+  # combine the already disaggregated data
   feDisagg <- feOdyssee %>%
-    left_join(feIEAEEI, by = c("region", "period", "carrier", "enduse")) %>%
+    left_join(feIEAEEI,
+              by = c("region", "period", "carrier", "enduse")) %>%
     mutate(value = ifelse(is.na(.data[["value.x"]]),
                           .data[["value.y"]],
                           .data[["value.x"]])) %>%
-    # mutate(value = max(.data[["value.x"]], .data[["value.y"]])) %>%
-    select("region", "period", "carrier", "enduse", "value") %>%
-    mutate(unit = "fe") %>%
-    semi_join(ieaIO, by = c("region", "period", "carrier"))
-
-
-  # Lower boundaries for disaggregation
-  lowerBounds <- feOdyssee %>%
-    select("region", "period", "carrier", "enduse", "value") %>%
-    filter(!is.na(.data[["value"]])) %>%
-    group_by(across(all_of(c("region", "period", "carrier")))) %>%
-    mutate(value = proportions(.data[["value"]]),
-           value = replace_na(.data[["value"]], 0)) %>%
-    ungroup()
+    select("region", "period", "carrier", "enduse", "value")
 
 
   # Disaggregate FE with EU/EC Shares
@@ -116,23 +104,58 @@ calcFEbyEUEC <- function() {
     toolDisaggregate(enduseShares  = sharesEU,
                      exclude       = exclude,
                      dataDisagg    = feDisagg,
-                     regionMapping = regmapping,
-                     lowerBounds   = lowerBounds) %>%
+                     regionMapping = regmapping) %>%
     select("region", "period", "unit", "carrier", "enduse", "value")
 
-  # Identify full data sets region-carrier-enduse combinations
-  dataReplace <- feOdyssee %>%
+
+  # existing enduse-carrier shares are applied directly on IEA data
+  dataReplaceFull <- feOdyssee %>%
+    select("region", "period", "carrier", "enduse", "value") %>%
     group_by(across(all_of(c("region", "carrier", "enduse")))) %>%
     filter(all(!is.na(.data[["value"]]))) %>%
+    ungroup() %>%
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    mutate(share = proportions(.data[["value"]])) %>%
+    ungroup() %>%
+    select(-"value") %>%
+    left_join(ieaIO, by = c("region", "period", "carrier")) %>%
+    mutate(replaceValue = .data[["value"]] * .data[["share"]],
+           replaceValue = replace_na(.data[["replaceValue"]], 0)) %>%
+    select("region", "period", "carrier", "enduse", "replaceValue")
+
+  # Identify full data sets region-carrier-enduse combinations
+  dataReplaceFill <- feDisagg %>%
+    group_by(across(all_of(c("region", "carrier", "enduse")))) %>%
     reframe(replaceValue = .data[["value"]],
             period = .data[["period"]])
 
+  # partial value replacements (due to e.g. partial optimization infeasibilities)
   data <- ieaIODis %>%
-    left_join(dataReplace, by = c("region", "carrier", "enduse", "period")) %>%
-    mutate(value = ifelse(!is.na(.data[["replaceValue"]]),
-                          .data[["replaceValue"]],
-                          .data[["value"]])) %>%
-    select(-"replaceValue")
+    left_join(dataReplaceFill, by = c("region", "carrier", "enduse", "period")) %>%
+    mutate(delta = .data[["value"]] / .data[["replaceValue"]]) %>%
+    group_by(across(all_of(c("region", "enduse", "carrier")))) %>%
+    mutate(delta = mean(.data[["delta"]], na.rm = TRUE)) %>%
+    ungroup() %>%
+    mutate(value = ifelse(!is.na(.data[["value"]]),
+                          ifelse(.data[["value"]] == 0,
+                                 ifelse(.data[["replaceValue"]] > 0 | is.na(.data[["replaceValue"]]),
+                                        .data[["replaceValue"]] * .data[["delta"]],
+                                        .data[["value"]]),
+                                 ifelse(.data[["replaceValue"]] == 0 & !is.na(.data[["replaceValue"]]),
+                                        .data[["replaceValue"]],
+                                        .data[["value"]])),
+                          0)) %>%
+    select(-"replaceValue") %>%
+    interpolate_missing_periods(expand.values = TRUE) %>%
+    mutate(value = replace_na(.data[["value"]], 0))
+
+  # existing disaggregated data replaces values from optimization
+  data <- data %>%
+    left_join(dataReplaceFull, by = c("region", "period", "carrier", "enduse")) %>%
+    mutate(value = ifelse(is.na(.data[["replaceValue"]]),
+                          .data[["value"]],
+                          .data[["replaceValue"]])) %>%
+    select("region", "period", "unit", "carrier", "enduse", "value")
 
 
   # CORRECTIONS ----------------------------------------------------------------
@@ -178,6 +201,7 @@ calcFEbyEUEC <- function() {
     as.quitte() %>%
     as.magpie() %>%
     toolCountryFill(1, verbosity = 2)
+
 
   return(list(x = dataFull,
               weight = NULL,

@@ -231,6 +231,7 @@ makeFloorspaceProjection <- function(df, gdppop, dens, endOfHistory, periodBegin
 
   return(dataPred)
 }
+<<<<<<< HEAD
 
 
 #' Extrapolate missing values beyond existing periods
@@ -290,3 +291,5 @@ extrapolateMissingPeriods <- function(chunk, key, slopeOfLast = 5) {
 
   return(outChunk)
 }
+=======
+>>>>>>> 510a17d (improved disaggregation)

@@ -16,6 +16,7 @@ makeFloorspaceProjection(df, gdppop, dens, endOfHistory, periodBegin)
 \item{endOfHistory}{upper temporal boundary of historic data}
 
 \item{periodBegin}{lower temporal boundary of historic data}
+
 }
 \value{
 floorspace per capita with filled missing entries

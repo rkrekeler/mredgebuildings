@@ -130,7 +130,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
     as.quitte()
 
   # WEO
-  sharesWEO <- readSource("WEO") %>%
+  sharesWEO <- readSource("WEO", subtype = "Buildings") %>%
     as.quitte()
 
   if (shareOf == "enduse") {
