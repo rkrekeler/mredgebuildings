@@ -2,32 +2,35 @@
 % Please edit documentation in R/calcHDDCDD.R
 \name{calcHDDCDD}
 \alias{calcHDDCDD}
-\title{calculate HDD and CDD based on outdoor/indoor temperature difference}
+\title{Calculate HDD and CDD based on outdoor/indoor temperature difference}
 \usage{
-calcHDDCDD(mappingFile, bait = FALSE, multiscen = FALSE)
+calcHDDCDD(
+  mappingFile,
+  bait = FALSE,
+  multiscen = FALSE,
+  rasDir = NULL,
+  cacheDir = NULL
+)
 }
 \arguments{
-\item{mappingFile}{data.frame containing input data file names and directories}
+\item{mappingFile}{file name of sectoral mapping containing input data file names and directories}
 
-\item{bait}{specify use of raw temperature or BAIT}
+\item{bait}{boolean, use BAIT instead of raw temperature}
 
-\item{multiscen}{specify if mappingFile covers more than one scenario}
+\item{multiscen}{boolean, does \code{mappingFile} cover more than one scenario?}
+
+\item{rasDir}{absolute path to directory for saving raster files}
+
+\item{cacheDir}{absolute path to directory for pre-calculated BAIT regression parameters}
 }
 \value{
 magpie object of heating and cooling degree days
 }
 \description{
-heating and cooling degree days based on raw outside temperature
-or bais-adjusted internal temperature (BAIT), driver for space heating and
-cooling demand in buildings
-}
-\examples{
-
-\dontrun{
-calcHDDCDD()
-}
-
+Heating and cooling degree days based on raw outside temperature
+or bias-adjusted internal temperature (BAIT), driver for space heating and
+cooling demand in buildings.
 }
 \author{
-Robin Krekeler, Hagen Tockhorn
+Robin Hasse, Hagen Tockhorn
 }

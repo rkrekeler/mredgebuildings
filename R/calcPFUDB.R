@@ -158,18 +158,16 @@ calcPFUDB <- function() {
 
   # note: hard-coded the fridge share so that the FE data becomes compliant with
   # the remaining input (can be done more nicely)
-  feDisagg <- feOdyssee %>%
-    left_join(feIEAEEI, by = c("region", "period", "carrier", "enduse")) %>%
-    mutate(value = ifelse(is.na(.data[["value.x"]]),
-                          .data[["value.y"]],
-                          .data[["value.x"]])) %>%
-    select("region", "period", "carrier", "enduse", "value") %>%
+
+  # correct fridgeShare
+  sharesReplace <- sharesReplace %>%
     filter(.data[["enduse"]] != "lighting") %>%
     mutate(value = .data[["value"]] * ifelse(.data[["enduse"]] != "appliances",
                                              1, fridgeShare),
            enduse = ifelse(.data[["enduse"]] == "appliances",
                            "refrigerators",
                            as.character(.data[["enduse"]])))
+
 
   # Extract regions with existing disaggregated FE shares
   replaceRegs <- sharesReplace %>%
