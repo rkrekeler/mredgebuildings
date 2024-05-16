@@ -17,15 +17,15 @@ extrapolateMissingPeriods <- function(chunk, key, slopeOfLast = 5) {
   if (nrow(chunk) < 2) {
     # constant value
     if (nrow(chunk) == 1) {
-      outChunk[[key]] = unique(chunk[[key]])
+      outChunk[[key]] <- unique(chunk[[key]])
     }
     # no value
-    else {
+    else { # nolint
       outChunk[[key]] <- NA
     }
   }
 
-  else {
+  else { #nolint
     upperPeriod <- max(chunk$period)
     lowerPeriod <- min(chunk$period)
 

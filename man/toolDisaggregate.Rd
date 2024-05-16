@@ -9,8 +9,7 @@ toolDisaggregate(
   enduseShares,
   exclude = NULL,
   dataDisagg = NULL,
-  regionMapping = NULL,
-  lowerBounds = NULL
+  regionMapping = NULL
 )
 }
 \arguments{
@@ -30,12 +29,9 @@ end uses in \code{enduseShares} are considered.}
 by carriers and end uses. The average distribution of its disaggregation
 will be used as the target distribution for the minisation.}
 
-\item{regionmapping}{data.frame with the columns \code{region} and
+\item{regionMapping}{data.frame with the columns \code{region} and
 \code{regionAgg} that maps the regions between \code{data} and
 \code{enduseShares}.}
-
-\item{lowerBounds}{data.frame with existing energy demand data differentiated
-by carriers and enduses that serve as lower bounds for the disaggregation}
 }
 \description{
 This function takes energy demand data that differentiates only by carrier

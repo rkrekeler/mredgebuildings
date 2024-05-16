@@ -144,6 +144,14 @@ calcPFUDB <- function() {
 
   ## Prepare toolDisaggregate Input ====
 
+  # merge existing disaggregated FE data
+  feDisagg <- feOdyssee %>%
+    left_join(feIEAEEI, by = c("region", "period", "carrier", "enduse")) %>%
+    mutate(value = ifelse(is.na(.data[["value.x"]]),
+                          .data[["value.y"]],
+                          .data[["value.x"]])) %>%
+    select("region", "period", "carrier", "enduse", "value")
+
   # calculate enduse-carrier shares for IEA EEI data
   sharesIEAEEI <- feIEAEEI %>%
     group_by(across(all_of(c("region", "period")))) %>%
