@@ -42,6 +42,32 @@ calcPFUDB <- function() {
     }
   }
 
+  # convert enduse "appliances" to "refrigerators" with respective scaling factor
+  addThermal <- function(df, mapping, fridgeShare, feOnly) {
+    df <- df %>%
+      filter(.data[["enduse"]] != "lighting") %>%
+      left_join(regmappingEDGE %>%
+                  select(-"RegionCodeEUR", -"RegionCodeEUR_ETP", -"X") %>%
+                  rename(region = "CountryCode") %>%
+                  left_join(fridgeShare, by = "RegionCode") %>%
+                  select(-"RegionCode"),
+                by = "region") %>%
+      mutate(value = ifelse(.data[["enduse"]] != "appliances",
+                            .data[["value"]],
+                            .data[["value"]] * .data[["share"]]),
+             enduse = ifelse(.data[["enduse"]] == "appliances",
+                             "refrigerators",
+                             as.character(.data[["enduse"]]))) %>%
+      select(-"share")
+
+    if (!feOnly) {
+      df <- normalize(df, shareOf)
+      return(df)
+    }
+
+    return(df)
+  }
+
 
 
   # PARAMETERS -----------------------------------------------------------------
@@ -55,9 +81,13 @@ calcPFUDB <- function() {
   exclude <- toolGetMapping("excludeEnduseCarrier.csv", "sectoral",
                             "mredgebuildings")
 
-  # fridge share of Europe (see calcShares)
-  fridgeShare <- 0.17
+  # fridge electricity shares (see calcShares)
+  fridgeShare <- rbind(
+    data.frame(RegionCode = "USA", share  = 0.12),
+    data.frame(RegionCode = c("EUR", "OCD", "RUS", "JPN"), share = 0.17),
+    data.frame(RegionCode = c("CHN", "IND", "NCD", "AFR", "MIE", "OAS"), share = 0.3))
 
+  # lower temporal threshold of historical data
   periodBegin <- 1990
 
 
@@ -112,6 +142,11 @@ calcPFUDB <- function() {
                                   type  = "sectoral",
                                   where = "mredgebuildings")
 
+  # EDGE mapping
+  regmappingEDGE <- toolGetMapping(name  = "regionmappingEDGE.csv",
+                                   type  = "regional",
+                                   where = "mredgebuildings")
+
 
 
   # PROCESS DATA ---------------------------------------------------------------
@@ -161,19 +196,22 @@ calcPFUDB <- function() {
 
   # correct fridgeShare
   sharesReplace <- sharesReplace %>%
-    filter(.data[["enduse"]] != "lighting") %>%
-    mutate(value = .data[["value"]] * ifelse(.data[["enduse"]] != "appliances",
-                                             1, fridgeShare),
-           enduse = ifelse(.data[["enduse"]] == "appliances",
-                           "refrigerators",
-                           as.character(.data[["enduse"]])))
+    addThermal(regmappingEDGE, fridgeShare, feOnly = TRUE)
+
+  feDisagg <- feOdyssee %>%
+    left_join(feIEAEEI,
+              by = c("region", "period", "carrier", "enduse")) %>%
+    mutate(value = ifelse(is.na(.data[["value.x"]]),
+                          .data[["value.y"]],
+                          .data[["value.x"]])) %>%
+    addThermal(regmappingEDGE, fridgeShare, feOnly = TRUE) %>%
+    select("region", "period", "carrier", "enduse", "value")
 
 
   # Extract regions with existing disaggregated FE shares
   replaceRegs <- sharesReplace %>%
     filter(!is.na(.data[["value"]])) %>%
     pull("region") %>%
-    droplevels() %>%
     unique()
 
   # re-aggregate Odyssee shares to carrier level
@@ -231,10 +269,11 @@ calcPFUDB <- function() {
            !(.data[["region"]] %in% replaceRegs),
            unit == "fe") %>%
     select(-"enduse") %>%
-    toolDisaggregate(sharesEU,
-                     exclude,
-                     feDisagg,
-                     regmapping) %>%
+    toolDisaggregate(enduseShares  = sharesEU,
+                     outliers      = c("IND", "CHN", "ZAF"),
+                     exclude       = exclude,
+                     dataDisagg    = feDisagg,
+                     regionMapping = regmapping) %>%
     select(colnames(pfuNonTherm))
 
   # Use carrier-enduse distribution to apply on useful energy

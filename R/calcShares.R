@@ -215,44 +215,6 @@ calcShares <- function(subtype = c("carrier_nonthermal",
   }
 
 
-  extrapolateMissingPeriods <- function(chunk, key, slopeOfLast = 5) {
-    # remove NAs
-    outChunk <- chunk
-    chunk <- chunk[!is.na(chunk$value), ]
-    upperPeriod <- max(chunk$period)
-    lowerPeriod <- min(chunk$period)
-
-    # linear regression at upper and lower end
-    mUpper <- lm(value ~ period, tail(arrange(chunk, "period"), slopeOfLast))
-    mLower <- lm(value ~ period, head(arrange(chunk, "period"), slopeOfLast))
-
-    # extrapolate both ends
-    outChunk[["valueUpper"]] <- predict(mUpper, newdata = outChunk["period"])
-    outChunk[["valueLower"]] <- predict(mLower, newdata = outChunk["period"])
-
-    # shift extrapolation to match last data points
-    outChunk[["valueUpper"]] <- outChunk[["valueUpper"]] *
-      as.numeric(outChunk[outChunk$period == upperPeriod, "value"] /
-                outChunk[outChunk$period == upperPeriod, "valueUpper"])
-    outChunk[["valueLower"]] <- outChunk[["valueLower"]] *
-      as.numeric(outChunk[outChunk$period == lowerPeriod, "value"] /
-                outChunk[outChunk$period == lowerPeriod, "valueLower"])
-
-    # fill missing lower/upper ends
-    outChunk[["value"]] <- ifelse(outChunk[["period"]] > max(chunk$period),
-                                  outChunk[["valueUpper"]],
-                                  outChunk[["value"]])
-    outChunk[["value"]] <- ifelse(outChunk[["period"]] < min(chunk$period),
-                                  outChunk[["valueLower"]],
-                                  outChunk[["value"]])
-    outChunk[["valueUpper"]] <- NULL
-    outChunk[["valueLower"]] <- NULL
-
-    return(outChunk)
-  }
-
-
-
   # PROCESS DATA ---------------------------------------------------------------
 
   # Adjust ETP Mapping
@@ -295,18 +257,17 @@ calcShares <- function(subtype = c("carrier_nonthermal",
                     rename(region = "CountryCode",
                            regionAgg = "EEAReg"),
                   by = "region") %>%
+        select("region", "period", "enduse", "regionAgg", "value") %>%
         group_by(across(all_of(c("regionAgg", "enduse", "period")))) %>%
-        summarise(value = sum(.data[["value"]], na.rm = TRUE)) %>%
-        ungroup() %>%
+        reframe(value = sum(.data[["value"]], na.rm = TRUE)) %>%
         group_by(across(all_of(c("regionAgg", "enduse")))) %>%
-        summarise(factor = .data[["value"]] / dplyr::lead(.data[["value"]])) %>%
-        ungroup() %>%
+        reframe(factor = .data[["value"]] / dplyr::lead(.data[["value"]])) %>%
         filter(!is.na(.data[["factor"]])) %>%
         left_join(regmappingETP %>%
                     select("CountryCode", "EEAReg") %>%
                     rename(region = "CountryCode",
                            regionAgg = "EEAReg"),
-                  by = "regionAgg") %>%
+                  by = "regionAgg", relationship = "many-to-many") %>%
         select(-"regionAgg")
 
 
@@ -328,7 +289,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
         as.quitte() %>%
         interpolate_missing_periods(period = seq(1990, 2020)) %>%
         group_by(across(all_of(c("region", "enduse")))) %>%
-        group_modify(extrapolateMissingPeriods) %>%
+        group_modify(~ extrapolateMissingPeriods(.x, key = "value")) %>%
         ungroup() %>%
         select("region", "period", "enduse", "value")
 
@@ -393,7 +354,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
         as.quitte() %>%
         interpolate_missing_periods(period = seq(1990, 2020)) %>%
         group_by(across(all_of(c("region", "enduse")))) %>%
-        group_modify(extrapolateMissingPeriods) %>%
+        group_modify(~ extrapolateMissingPeriods(.x, key = "value")) %>%
         ungroup() %>%
         select("region", "period", "enduse", "value")
 

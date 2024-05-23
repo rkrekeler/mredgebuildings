@@ -26,6 +26,8 @@
 #' @param regionmapping data.frame with the columns \code{region} and
 #'   \code{regionAgg} that maps the regions between \code{data} and
 #'   \code{enduseShares}.
+#' @param outliers list of regions where naive disaggregation estimate shall
+#'   be used.
 #'
 #' @author Hagen Tockhorn, Robin Hasse
 #'
@@ -37,6 +39,7 @@
 
 toolDisaggregate <- function(data,
                              enduseShares,
+                             outliers = NULL,
                              exclude = NULL,
                              dataDisagg = NULL,
                              regionMapping = NULL) {
@@ -62,6 +65,8 @@ toolDisaggregate <- function(data,
   checkCols(exclude, "exclude", c("carrier", "enduse"))
   checkCols(dataDisagg, "dataDisagg", c("region", "enduse", "value", "enduse"))
   checkCols(regionMapping, "regionMapping", c("region", "regionAgg"))
+
+  if (is.null(outliers)) outliers <- c()
 
 
   ## region mapping ====
@@ -124,6 +129,8 @@ toolDisaggregate <- function(data,
     # missing periods get the average distribution across all given regions
     estimateRegional <- dataDisagg %>%
       semi_join(carrierEnduseMapping, by = c("carrier", "enduse"))
+
+    # calculate global shares
     estimateGlobal <- estimateRegional %>%
       group_by(across(-all_of(c("region", "value")))) %>%
       summarise(value = sum(.data[["value"]], na.rm = TRUE),
@@ -131,10 +138,27 @@ toolDisaggregate <- function(data,
       group_by(across(-all_of(c("enduse", "value")))) %>%
       mutate(share = proportions(.data[["value"]])) %>%
       select(-"value")
+
+    # calculate regional shares
     estimateRegional <- estimateRegional %>%
       group_by(across(-all_of(c("enduse", "value")))) %>%
       mutate(share = proportions(.data[["value"]])) %>%
       select(-"value")
+
+    # replace outlier regions with EU shares rather than global shares
+    estimateRegional <- estimateRegional %>%
+      left_join(regionMapping, by = "region") %>%
+      left_join(enduseShares %>%
+                  select("region", "period", "enduse", "value"),
+                by = c("regionAgg" = "region", "period", "enduse")) %>%
+      mutate(share = ifelse(!is.na(.data[["share"]]),
+                            .data[["share"]],
+                            ifelse(.data[["regionAgg"]] %in% outliers,
+                                   .data[["value"]],
+                                   .data[["share"]]))) %>%
+      select(-"value", -"regionAgg")
+
+    # calculate estimations
     estimate <- data %>%
       join_all(estimateRegional) %>%
       join_all(estimateGlobal, exclude = "share",
@@ -188,6 +212,15 @@ toolDisaggregate <- function(data,
     group_modify(.disaggregate) %>%
     ungroup() %>%
 
+    # calculate carrier-specific shares
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    mutate(share = proportions(.data[["pred"]])) %>%
+    ungroup() %>%
+
+    # apply shares on original fe data
+    mutate(value = .data[["value"]] * .data[["share"]]) %>%
+    select(-"share", -"pred") %>%
+
     # recover region-carrier combinations with zero demand
     join_all(dataOut %>% select(-"estimate", -"value", -"enduseTotal",
                                 -"enduseShare", -"total"),
@@ -196,6 +229,9 @@ toolDisaggregate <- function(data,
 
     # remove information on precision (can be kept for debugging)
     select(-"precision")
+
+
+
 
   return(dataOut)
 }
@@ -277,16 +313,6 @@ toolDisaggregate <- function(data,
 
   # identity matrix
   identityMatrix <- diag(nrow(variables))
-
-  # lower value boundaries
-  # lowBound <- subset %>%
-  #   select("region", "carrier", "enduse", "lowerBound") %>%
-  #   unite(col = "variable", c("region", "carrier", "enduse"), sep = "-")
-
-  # replace 0's in right-hand side of constraints w/ lower bounds
-  # matchIdx <- match(constraintRHS$zero$rhs, lowBound$variable)
-  # matchVals <- lowBound$lowerBound[matchIdx]
-  # constraintRHS$zero$value[!is.na(matchIdx)] <- matchVals[!is.na(matchIdx)]
 
   # first look for exact solution
   # If there is none, find one that matches end use quantities closely
@@ -370,20 +396,20 @@ toolDisaggregate <- function(data,
 
   # RETURN ---------------------------------------------------------------------
 
-  subsetOut <- variables %>%
-    select("region", "carrier", "enduse")
+  subsetOut <- subset %>%
+    select("region", "carrier", "enduse", "value")
 
   if (is.null(r)) {
-    subsetOut[["value"]] <- as.numeric(NA)
+    subsetOut[["pred"]] <- as.numeric(NA)
     subsetOut[["precision"]] <- as.character(NA)
   } else {
-    subsetOut[["value"]] <- r[["solution"]]
+    subsetOut[["pred"]] <- r[["solution"]]
     subsetOut[["precision"]] <- precision
   }
 
-  subsetOut[replace_na(subsetOut[["value"]], 0) < 1E-5 &
-              !is.na(subsetOut[["value"]]),
-            "value"] <- 0
+  subsetOut[replace_na(subsetOut[["pred"]], 0) < 1E-6 &
+              !is.na(subsetOut[["pred"]]),
+            "pred"] <- 0
 
   return(subsetOut)
 }
