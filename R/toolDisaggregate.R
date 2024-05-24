@@ -23,7 +23,7 @@
 #' @param dataDisagg data.frame similar to \code{data} but already disaggregated
 #'   by carriers and end uses. The average distribution of its disaggregation
 #'   will be used as the target distribution for the minisation.
-#' @param regionmapping data.frame with the columns \code{region} and
+#' @param regionMapping data.frame with the columns \code{region} and
 #'   \code{regionAgg} that maps the regions between \code{data} and
 #'   \code{enduseShares}.
 #' @param outliers list of regions where naive disaggregation estimate shall
