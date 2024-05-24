@@ -56,14 +56,24 @@ convertTCEP <- function(x) {
     select("region", "period", "variable", "unit", "value") %>%
     revalue.levels(variable = enduseMapping)
 
+  # correct FE enduse data for "appliances" in India
+  data <- data %>%
+    mutate(value = ifelse(.data[["region"]] == "India and other dev. Asia" &
+                            .data[["period"]] == 2000 &
+                            .data[["variable"]] == "appliances",
+                          .data[["value"]] * 0.70,
+                          .data[["value"]]))
+
+
   # Disaggregate to ISO Level
   data <- data %>%
     mutate(region = gsub("_", ".", .data[["region"]])) %>%
     aggregate_map(
       mapping = tcepMap[, c("CountryCode", "RegionCode")],
-      by = c(region = "RegionCode"),
+      by = c("region" = "RegionCode"),
       weights = pop %>%
-        rename(weight_val_col = "value"),
+        rename(weight_val_col = "value") %>%
+        select("region", "period", "weight_val_col"),
       weight_item_col = "region",
       forceAggregation = TRUE
     ) %>%

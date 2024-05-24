@@ -599,7 +599,7 @@ compHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
         check <- FALSE
       }
     } else if (typeDD == "CDD") {
-      if (tlim - tamb > 2 * stdDif) {
+      if (tlim - tamb > stdDif) {
         check <- FALSE
       }
     }
@@ -625,19 +625,16 @@ compHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
                                         "factor_err"   = 0,
                                         "typeDD"       = typeDD)
                     } else {
-
-                      # integration boundaries
-                      x1 <- .tlim - 4 * tlimStd
-                      x2 <- .tlim + 4 * tlimStd
-                      y1 <- min(.tlim - 3 * tlimStd, tamb - 3 * tlimStd)
-                      y2 <- max(.tlim + 3 * tlimStd, tamb + 3 * tlimStd)
+                      # tlim integration boundaries
+                      x1 <- .tlim - 3*tlimStd
+                      x2 <- .tlim + 3*tlimStd
 
                       if (typeDD == "HDD") {
                         f <- integral2(heatingFactor,
                                        xmin = x1,
                                        xmax = x2,
-                                       ymin = y1,
-                                       ymax = function(x) {x}, #nolint
+                                       ymin = tamb - 3*tambStd,
+                                       ymax = min(.tlim, tamb + 3*tambStd),
                                        tamb = tamb,
                                        tambStd = tambStd,
                                        tlim = .tlim,
@@ -647,8 +644,8 @@ compHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
                         f <- integral2(coolingFactor,
                                        xmin = x1,
                                        xmax = x2,
-                                       ymin = function(x) {x}, #nolint
-                                       ymax = y2,
+                                       ymin = max(.tlim, tamb - 3*tambStd),
+                                       ymax = tamb + 3*tambStd,
                                        tamb = tamb,
                                        tambStd = tambStd,
                                        tlim = .tlim,
@@ -657,7 +654,7 @@ compHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
                       }
                       tmp <- data.frame("T_amb"        = tamb,
                                         "T_amb_K"      = round(tamb + 273.15, 1),
-                                        "tLim"        = .tlim,
+                                        "tLim"         = .tlim,
                                         "factor"       = f$Q,
                                         "factor_err"   = f$error,
                                         "typeDD"       = typeDD)

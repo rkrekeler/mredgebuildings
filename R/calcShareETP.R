@@ -26,7 +26,6 @@
 #' @export
 
 calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
-
   # FUNCTIONS ------------------------------------------------------------------
 
   # Calculate Shares
@@ -239,3 +238,4 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
               max = 1,
               description = "Share of carrier or end use in buildings demand"))
 }
+

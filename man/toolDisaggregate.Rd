@@ -29,7 +29,7 @@ end uses in \code{enduseShares} are considered.}
 by carriers and end uses. The average distribution of its disaggregation
 will be used as the target distribution for the minisation.}
 
-\item{regionMapping}{data.frame with the columns \code{region} and
+\item{regionmapping}{data.frame with the columns \code{region} and
 \code{regionAgg} that maps the regions between \code{data} and
 \code{enduseShares}.}
 }

@@ -104,7 +104,8 @@ calcFEbyEUEC <- function() {
     toolDisaggregate(enduseShares  = sharesEU,
                      exclude       = exclude,
                      dataDisagg    = feDisagg,
-                     regionMapping = regmapping) %>%
+                     regionMapping = regmapping,
+                     outliers      = c("IND", "CHN", "ZAF")) %>%
     select("region", "period", "unit", "carrier", "enduse", "value")
 
 
@@ -129,28 +130,9 @@ calcFEbyEUEC <- function() {
     reframe(replaceValue = .data[["value"]],
             period = .data[["period"]])
 
-  # partial value replacements (due to e.g. partial optimization infeasibilities)
-  data <- ieaIODis %>%
-    left_join(dataReplaceFill, by = c("region", "carrier", "enduse", "period")) %>%
-    mutate(delta = .data[["value"]] / .data[["replaceValue"]]) %>%
-    group_by(across(all_of(c("region", "enduse", "carrier")))) %>%
-    mutate(delta = mean(.data[["delta"]], na.rm = TRUE)) %>%
-    ungroup() %>%
-    mutate(value = ifelse(!is.na(.data[["value"]]),
-                          ifelse(.data[["value"]] == 0,
-                                 ifelse(.data[["replaceValue"]] > 0 | is.na(.data[["replaceValue"]]),
-                                        .data[["replaceValue"]] * .data[["delta"]],
-                                        .data[["value"]]),
-                                 ifelse(.data[["replaceValue"]] == 0 & !is.na(.data[["replaceValue"]]),
-                                        .data[["replaceValue"]],
-                                        .data[["value"]])),
-                          0)) %>%
-    select(-"replaceValue") %>%
-    interpolate_missing_periods(expand.values = TRUE) %>%
-    mutate(value = replace_na(.data[["value"]], 0))
 
   # existing disaggregated data replaces values from optimization
-  data <- data %>%
+  data <- ieaIODis %>%
     left_join(dataReplaceFull, by = c("region", "period", "carrier", "enduse")) %>%
     mutate(value = ifelse(is.na(.data[["replaceValue"]]),
                           .data[["value"]],
@@ -163,11 +145,11 @@ calcFEbyEUEC <- function() {
   # For unknown reasons, the enduse share of "space_cooling" for region "Africa"
   # is not met and will therefore be corrected. Since "space_cooling" only corresponds
   # to the carrier "elec", the correction is straight-forward.
-  # TODO: check if this can be fixed #nolint
+  # TODO: check if this can be fixed
 
   elecSpaceCoolingShare <- sharesEU %>%
-    filter(.data[["region"]] == "Africa",
-           .data[["enduse"]] == "space_cooling") %>%
+    filter(region == "Africa",
+           enduse == "space_cooling") %>%
     select("period", "value") %>%
     rename("share" = "value")
 

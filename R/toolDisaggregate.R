@@ -23,22 +23,23 @@
 #' @param dataDisagg data.frame similar to \code{data} but already disaggregated
 #'   by carriers and end uses. The average distribution of its disaggregation
 #'   will be used as the target distribution for the minisation.
-#' @param regionMapping data.frame with the columns \code{region} and
+#' @param regionmapping data.frame with the columns \code{region} and
 #'   \code{regionAgg} that maps the regions between \code{data} and
 #'   \code{enduseShares}.
+#' @param outliers list of regions where naive disaggregation estimate shall
+#'   be used.
 #'
 #' @author Hagen Tockhorn, Robin Hasse
 #'
 #' @importFrom quitte interpolate_missing_periods
 #' @importFrom dplyr %>% .data mutate group_by ungroup across all_of left_join
 #'   semi_join group_modify select summarise filter anti_join
-#' @importFrom plyr join_all
 #' @importFrom tidyr pivot_wider
-#'
 #' @export
 
 toolDisaggregate <- function(data,
                              enduseShares,
+                             outliers = NULL,
                              exclude = NULL,
                              dataDisagg = NULL,
                              regionMapping = NULL) {
@@ -64,6 +65,8 @@ toolDisaggregate <- function(data,
   checkCols(exclude, "exclude", c("carrier", "enduse"))
   checkCols(dataDisagg, "dataDisagg", c("region", "enduse", "value", "enduse"))
   checkCols(regionMapping, "regionMapping", c("region", "regionAgg"))
+
+  if (is.null(outliers)) outliers <- c()
 
 
   ## region mapping ====
@@ -126,6 +129,8 @@ toolDisaggregate <- function(data,
     # missing periods get the average distribution across all given regions
     estimateRegional <- dataDisagg %>%
       semi_join(carrierEnduseMapping, by = c("carrier", "enduse"))
+
+    # calculate global shares
     estimateGlobal <- estimateRegional %>%
       group_by(across(-all_of(c("region", "value")))) %>%
       summarise(value = sum(.data[["value"]], na.rm = TRUE),
@@ -133,11 +138,28 @@ toolDisaggregate <- function(data,
       group_by(across(-all_of(c("enduse", "value")))) %>%
       mutate(share = proportions(.data[["value"]])) %>%
       select(-"value")
+
+    # calculate regional shares
     estimateRegional <- estimateRegional %>%
       group_by(across(-all_of(c("enduse", "value")))) %>%
       mutate(share = proportions(.data[["value"]])) %>%
       select(-"value")
-    estimate <- data %>% # nolint object_usage_linter
+
+    # replace outlier regions with EU shares rather than global shares
+    estimateRegional <- estimateRegional %>%
+      left_join(regionMapping, by = "region") %>%
+      left_join(enduseShares %>%
+                  select("region", "period", "enduse", "value"),
+                by = c("regionAgg" = "region", "period", "enduse")) %>%
+      mutate(share = ifelse(!is.na(.data[["share"]]),
+                            .data[["share"]],
+                            ifelse(.data[["regionAgg"]] %in% outliers,
+                                   .data[["value"]],
+                                   .data[["share"]]))) %>%
+      select(-"value", -"regionAgg")
+
+    # calculate estimations
+    estimate <- data %>%
       join_all(estimateRegional) %>%
       join_all(estimateGlobal, exclude = "share",
                suffix = c("Regional", "Global")) %>%
@@ -153,7 +175,7 @@ toolDisaggregate <- function(data,
   # DISAGGREGATE  --------------------------------------------------------------
 
   # Disaggregate within each group of aggregated regions and periods
-  dataOut <- data %>% # nolint object_usage_linter
+  dataOut <- data %>%
 
     # map regions from data to agg. regions from enduseShares
     left_join(regionMapping, by = "region") %>%
@@ -179,7 +201,7 @@ toolDisaggregate <- function(data,
     join_all(estimate)
 
 
-  dataOut <- dataOut %>% # nolint object_usage_linter
+  dataOut <- dataOut %>%
 
     # remove region-carrier combinations with zero demand to reduce problem size
     filter(.data[["value"]] > 0) %>%
@@ -190,14 +212,26 @@ toolDisaggregate <- function(data,
     group_modify(.disaggregate) %>%
     ungroup() %>%
 
+    # calculate carrier-specific shares
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    mutate(share = proportions(.data[["pred"]])) %>%
+    ungroup() %>%
+
+    # apply shares on original fe data
+    mutate(value = .data[["value"]] * .data[["share"]]) %>%
+    select(-"share", -"pred") %>%
+
     # recover region-carrier combinations with zero demand
     join_all(dataOut %>% select(-"estimate", -"value", -"enduseTotal",
                                 -"enduseShare", -"total"),
-             .direction = "right") %>% # nolint
+             .direction = "right") %>%
     mutate(value = replace_na(.data[["value"]], 0)) %>%
 
     # remove information on precision (can be kept for debugging)
     select(-"precision")
+
+
+
 
   return(dataOut)
 }
