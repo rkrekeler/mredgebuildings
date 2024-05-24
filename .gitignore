@@ -8,10 +8,3 @@ inst/extdata/regional/.DS_Store
 inst/extdata/sectoral/baitregression-files_test.csv
 inst/regional/
 inst/sectoral/
-R/readUvalues.R
-
-inst/extdata/sectoral/filemappings/start_GFDL-ESM4_picontrol.R
-inst/extdata/sectoral/filemappings/start_IPSL-CM6A-LR_picontrol.R
-inst/extdata/sectoral/filemappings/start_MPI-ESM1-2-HR_picontrol.R
-inst/extdata/sectoral/filemappings/start_MRI-ESM2-0_picontrol.R
-inst/extdata/sectoral/filemappings/start_UKESM1-0-LL_picontrol.R

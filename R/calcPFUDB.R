@@ -43,7 +43,7 @@ calcPFUDB <- function() {
   }
 
   # convert enduse "appliances" to "refrigerators" with respective scaling factor
-  addThermal <- function(df, mapping, fridgeShare, feOnly) {
+  addThermal <- function(df, mapping, fridgeShare) {
     df <- df %>%
       filter(.data[["enduse"]] != "lighting") %>%
       left_join(regmappingEDGE %>%
@@ -59,12 +59,6 @@ calcPFUDB <- function() {
                              "refrigerators",
                              as.character(.data[["enduse"]]))) %>%
       select(-"share")
-
-    if (!feOnly) {
-      df <- normalize(df, shareOf)
-      return(df)
-    }
-
     return(df)
   }
 
@@ -82,10 +76,9 @@ calcPFUDB <- function() {
                             "mredgebuildings")
 
   # fridge electricity shares (see calcShares)
-  fridgeShare <- rbind(
-    data.frame(RegionCode = "USA", share  = 0.12),
-    data.frame(RegionCode = c("EUR", "OCD", "RUS", "JPN"), share = 0.17),
-    data.frame(RegionCode = c("CHN", "IND", "NCD", "AFR", "MIE", "OAS"), share = 0.3))
+  fridgeShare <- rbind(data.frame(RegionCode = "USA", share  = 0.12),
+                       data.frame(RegionCode = c("EUR", "OCD", "RUS", "JPN"), share = 0.17),
+                       data.frame(RegionCode = c("CHN", "IND", "NCD", "AFR", "MIE", "OAS"), share = 0.3))
 
   # lower temporal threshold of historical data
   periodBegin <- 1990
@@ -267,7 +260,7 @@ calcPFUDB <- function() {
   pfuThermFE <- pfu %>%
     filter(.data[["enduse"]] == "Low-T heat",
            !(.data[["region"]] %in% replaceRegs),
-           unit == "fe") %>%
+           .data[["unit"]] == "fe") %>%
     select(-"enduse") %>%
     toolDisaggregate(enduseShares  = sharesEU,
                      outliers      = c("IND", "CHN", "ZAF"),

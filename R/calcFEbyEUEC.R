@@ -124,12 +124,6 @@ calcFEbyEUEC <- function() {
            replaceValue = replace_na(.data[["replaceValue"]], 0)) %>%
     select("region", "period", "carrier", "enduse", "replaceValue")
 
-  # Identify full data sets region-carrier-enduse combinations
-  dataReplaceFill <- feDisagg %>%
-    group_by(across(all_of(c("region", "carrier", "enduse")))) %>%
-    reframe(replaceValue = .data[["value"]],
-            period = .data[["period"]])
-
 
   # existing disaggregated data replaces values from optimization
   data <- ieaIODis %>%
@@ -145,11 +139,11 @@ calcFEbyEUEC <- function() {
   # For unknown reasons, the enduse share of "space_cooling" for region "Africa"
   # is not met and will therefore be corrected. Since "space_cooling" only corresponds
   # to the carrier "elec", the correction is straight-forward.
-  # TODO: check if this can be fixed
+  # TODO: check if this can be fixed #nolint
 
   elecSpaceCoolingShare <- sharesEU %>%
-    filter(region == "Africa",
-           enduse == "space_cooling") %>%
+    filter(.data[["region"]] == "Africa",
+           .data[["enduse"]] == "space_cooling") %>%
     select("period", "value") %>%
     rename("share" = "value")
 

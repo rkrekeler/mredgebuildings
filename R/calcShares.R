@@ -275,8 +275,8 @@ calcShares <- function(subtype = c("carrier_nonthermal",
 
 
       sharesFull <- rbind(sharesStart,
-                           shares %>%
-                             filter(!is.na(.data[["value"]])))
+                          shares %>%
+                            filter(!is.na(.data[["value"]])))
 
 
       sharesFull <- sharesFull %>%
