@@ -250,12 +250,12 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
 
       # relevant variables
       varsOdyssee <- c(
-        surlog_m2 = "floorPerDwelling_Total.m2",
-        surmpr_m2 = "floorPerDwelling_SFH.m2",
-        suripr_m2 = "floorPerDwelling_MFH.m2",
-        nbrlpr_1 = "dwellings_Total.1",
-        nbrmpr_1 = "dwellings_SFH.1",
-        nbripr_1 = "dwellings_MFH.1"
+        surlog = "floorPerDwelling_Total",
+        surmpr = "floorPerDwelling_SFH",
+        suripr = "floorPerDwelling_MFH",
+        nbrlpr = "dwellings_Total",
+        nbrmpr = "dwellings_SFH",
+        nbripr = "dwellings_MFH"
       )
       varsStockEubdb <- c(
         `Average floor area of permanently occupied dwellings_m2` = "floorPerDwelling_Total.m2",
@@ -275,9 +275,9 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
         "Share of dwellings built after 2010_1"
       )
       varsConstructionOdyssee <- c(
-        nbrlpn_1 = "construction_Total.1",
-        nbrmpn_1 = "construction_SFH.1",
-        nbripn_1 = "construction_MFH.1"
+        nbrlpn = "construction_Total",
+        nbrmpn = "construction_SFH",
+        nbripn = "construction_MFH"
       )
       varsLocationEubdb <- c(
         `Share of dwellings in densely-populated area (urban centre)_1`       = "dwellings_urban.1",
@@ -285,12 +285,12 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
         `Share of dwellings in thinly-populated area (rural)_1`               = "dwellings_rural.1"
       )
       varsHeatingOdyssee <- c(
-        nbrlprpet_1 = "dwellings_oil.1",
-        nbrlprgaz_1 = "dwellings_gas.1",
-        nbrlprcms_1 = "dwellings_coal.1",
-        nbrlprvap_1 = "dwellings_heat.1",
-        nbrlprboi_1 = "dwellings_biomod.1",
-        nbrlprele_1 = "dwellings_elec.1"
+        nbrlprpet = "dwellings_oil",
+        nbrlprgaz = "dwellings_gas",
+        nbrlprcms = "dwellings_coal",
+        nbrlprvap = "dwellings_heat",
+        nbrlprboi = "dwellings_biomod",
+        nbrlprele = "dwellings_elec"
       )
       varsHeatingIdees <- c(
         `Residential|Stock of households|Space heating|Solids`                              = "dwellings_coal.11",
@@ -308,8 +308,7 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
       # filter variables
       stockOdyssee <- odyssee %>%
         filter(.data[["variable"]] %in% names(varsOdyssee)) %>%
-        revalue.levels(variable = varsOdyssee) %>%
-        separate("variable", c("variable", "unit"), sep = "\\.")
+        revalue.levels(variable = varsOdyssee)
       stockEubdb <- eubdb %>%
         filter(.data[["variable"]] %in% names(varsStockEubdb)) %>%
         revalue.levels(variable = varsStockEubdb) %>%
@@ -320,8 +319,7 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
                                gsub(" and ", "-", .data[["variable"]])))
       constructionOdyssee <- odyssee %>%
         filter(.data[["variable"]] %in% names(varsConstructionOdyssee)) %>%
-        revalue.levels(variable = varsConstructionOdyssee) %>%
-        separate("variable", c("variable", "unit"), sep = "\\.")
+        revalue.levels(variable = varsConstructionOdyssee)
       locationEubdb <- eubdb %>%
         filter(.data[["variable"]] %in% names(varsLocationEubdb)) %>%
         revalue.levels(variable = varsLocationEubdb) %>%
@@ -331,7 +329,6 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
       heatingOdyssee <- odyssee %>%
         filter(.data[["variable"]] %in% names(varsHeatingOdyssee)) %>%
         revalue.levels(variable = varsHeatingOdyssee) %>%
-        separate("variable", c("variable", "unit"), sep = "\\.") %>%
         separate("variable", c("variable", "carrier"), sep = "_")
       heatingIdees <- idees %>%
         filter(.data[["variable"]] %in% names(varsHeatingIdees)) %>%
@@ -1019,9 +1016,8 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
     unique()
 
   # heating system
-  hsMap <- toolGetMapping("refMap_mredgebuildings_heating.csv", "sectoral",
-                          "mredgebuildings") %>%
-    select(heating = "variable", "hs") %>%
+  hsMap <- getBrickMapping("heatingSystem.csv") %>%
+    select(heating = "mredgebuildings", "hs") %>%
     unique()
 
   # remap

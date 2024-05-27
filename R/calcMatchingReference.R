@@ -7,7 +7,7 @@
 #' @importFrom magclass mbind as.magpie collapseDim
 #' @importFrom madrat readSource toolCountryFill toolGetMapping
 #' @importFrom quitte as.quitte interpolate_missing_periods
-#' @importFrom dplyr group_by filter mutate .data
+#' @importFrom dplyr group_by filter mutate .data across all_of reframe
 #' @export
 #'
 calcMatchingReference <- function(subtype) {
@@ -33,8 +33,7 @@ calcMatchingReference <- function(subtype) {
     readOdysseeData <- function(subsector) {
       readSource("Odyssee", subsector) %>%
         as.quitte(na.rm = TRUE) %>%
-        select("region", "period", "variable", "value") %>%
-        mutate(variable = sub("_.*$", "", .data[["variable"]]))
+        select("region", "period", "variable", "value")
     }
     households <- readOdysseeData("households")
     services <- readOdysseeData("services")
@@ -64,7 +63,7 @@ calcMatchingReference <- function(subtype) {
   aggStock <- function(stockHist, dim) {
     data <- stockHist %>%
       group_by(across(all_of(c("region", "period", dim)))) %>%
-      summarise(value = sum(.data[["value"]]) / 1E6,
+      summarise(value = sum(.data[["value"]]),
                 .groups = "drop")
     colnames(data)[3] <- "variable"
     return(as.quitte(data))
@@ -82,7 +81,7 @@ calcMatchingReference <- function(subtype) {
 
     mredgebuildings_buildingType = {
 
-      data <- aggStock(stockHist, "buildingType")
+      data <- aggStock(stockHist, "typ")
 
       unit <- "million m2"
       description <- "stock of residential buildings"
@@ -93,7 +92,7 @@ calcMatchingReference <- function(subtype) {
 
     mredgebuildings_location = {
 
-      data <- aggStock(stockHist, "location")
+      data <- aggStock(stockHist, "loc")
 
       unit <- "million m2"
       description <- "stock of residential buildings"
@@ -104,7 +103,7 @@ calcMatchingReference <- function(subtype) {
 
     mredgebuildings_vintage = {
 
-      data <- aggStock(stockHist, "vintage")
+      data <- aggStock(stockHist, "vin")
 
       unit <- "million m2"
       description <- "stock of residential buildings"
@@ -114,8 +113,11 @@ calcMatchingReference <- function(subtype) {
     ## mredgebuildings_heating ====
 
     mredgebuildings_heating = {
-
-      data <- aggStock(stockHist, "heating")
+      data <- aggStock(stockHist, "hs") %>%
+        mutate(variable = as.character(.data[["variable"]])) %>%
+        group_by(across(-all_of(c("variable", "value")))) %>%
+        reframe(variable = c(.data[["variable"]], "h2bo"),
+                value = c(.data[["value"]], 0))
 
       unit <- "million m2"
       description <- "stock of residential buildings"

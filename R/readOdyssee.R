@@ -20,7 +20,6 @@
 #'
 #' @importFrom utils read.csv
 #' @importFrom dplyr %>% select mutate .data
-#' @importFrom tidyr unite
 #' @importFrom quitte as.quitte
 #' @importFrom magclass as.magpie
 #' @export
@@ -29,20 +28,19 @@ readOdyssee <- function(subtype = "households") {
 
   # check subtype
   file <- switch(subtype,
-                 households = "export_enerdata_9259_031531.csv",
-                 services   = "export_enerdata_9259_031431.csv",
+                 households = "Enerdata_Odyssee_241002_090920.csv",
+                 services   = "Enerdata_Odyssee_241002_091116.csv",
                  stop("'", subtype, "' is not a valid subtype."))
 
   # read data
-  data <- read.csv(file, skip = 1, na.strings = c("n.a.", "")) %>%
-    select(region = "ISO.code",
+  data <- read.csv(file, na.strings = c("n.a.", "")) %>%
+    select(region = "ISO.Code",
            period = "Year",
-           variable = "Item.code",
+           variable = "Item.Code",
            value = "Value",
            unit = "Unit") %>%
     mutate(value = as.numeric(.data[["value"]])) %>%
     filter(!is.na(.data[["value"]])) %>%
-    unite("variable", "variable", "unit", na.rm = TRUE) %>%
     as.quitte() %>%
     as.magpie()
 

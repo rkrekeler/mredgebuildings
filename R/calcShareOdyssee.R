@@ -78,10 +78,9 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
   # Map Variables
   odyssee <- odysseeData %>%
     as.quitte() %>%
-    filter(.data[["variable"]] %in% paste0(vars, "_EJ"),
+    filter(.data[["variable"]] %in% vars,
            !is.na(.data[["value"]])) %>%
-    mutate(region = droplevels(.data[["region"]]),
-           variable = sub("_.*$", "", .data[["variable"]])) %>%
+    mutate(region = droplevels(.data[["region"]])) %>%
     separate("variable", c("carrier", "sector", "enduse"), c(3, 8)) %>%
     revalue.levels(carrier = carrierMap,
                    sector  = sectorMap,
@@ -118,10 +117,9 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
 
     # split existing aggregated data into "appliances" and "lighting"
     applightData <- odysseeData %>%
-      filter(.data[["variable"]] %in% paste0(vars, "_EJ"),
+      filter(.data[["variable"]] %in% vars,
              !is.na(.data[["value"]])) %>%
-      mutate(region = droplevels(.data[["region"]]),
-             variable = sub("_.*$", "", .data[["variable"]])) %>%
+      mutate(region = droplevels(.data[["region"]])) %>%
       separate("variable", c("carrier", "sector", "enduse"), c(3, 8)) %>%
       revalue.levels(carrier = carrierMap,
                      sector  = sectorMap,
