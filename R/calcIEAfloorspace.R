@@ -3,7 +3,7 @@
 #' @export
 calcIEAfloorspace <- function() {
 
-  x <- readSource("IEAfloorspace", convert = F)
+  x <- readSource("IEAfloorspace", convert = FALSE)
 
   return(list(
     x = x,

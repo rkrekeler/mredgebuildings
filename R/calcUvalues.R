@@ -1,5 +1,6 @@
 #' Calculate U-value
 #'
+#' @param subtype either 'EUBuildingsObservatory' or 'ETSAP'
 #' @export
 calcUvalues <- function(subtype) {
 
@@ -8,10 +9,10 @@ calcUvalues <- function(subtype) {
   }
 
   if (subtype == "EUBuildingsObservatory") {
-    x <- readSource("EUBuildingsObservatory", convert = F)
+    x <- readSource("EUBuildingsObservatory", convert = FALSE)
     unit <- "W/m2C"
   } else {
-    x <- readSource("ETSAP", convert = F)
+    x <- readSource("ETSAP", convert = FALSE)
     unit <- "W/m2K"
   }
 

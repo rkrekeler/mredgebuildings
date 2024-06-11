@@ -5,11 +5,11 @@
 readEUBuildingsObservatory <- function() {
 
   res <- read.csv2(file.path("2017", "Uvalues_Res_export-eu-buildings-20170503115017.csv"),
-                   na.strings = "-", sep = ",", comment.char = "#", stringsAsFactors = F) %>%
+                   na.strings = "-", sep = ",", comment.char = "#", stringsAsFactors = FALSE) %>%
     mutate("variable" = "uvalue_res")
 
   com <- read.csv2(file.path("2017", "Uvalues_NonRes_export-eu-buildings-20170503115017.csv"),
-                   na.strings = "-", sep = ",", comment.char = "#", stringsAsFactors = F) %>%
+                   na.strings = "-", sep = ",", comment.char = "#", stringsAsFactors = FALSE) %>%
     mutate("variable" = "uvalue_com")
 
   data <- rbind(res, com)
