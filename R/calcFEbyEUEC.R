@@ -109,7 +109,7 @@ calcFEbyEUEC <- function() {
     mutate(unit = "fe") %>%
     toolDisaggregate(enduseShares  = sharesEU,
                      exclude       = exclude,
-                     dataDisagg    = feDisagg,
+                     dataDisagg    = feDisagg,git c
                      regionMapping = regmapping,
                      outliers      = c("IND", "CHN", "ZAF")) %>%
     select("region", "period", "unit", "carrier", "enduse", "value")
