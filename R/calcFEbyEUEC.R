@@ -85,6 +85,12 @@ calcFEbyEUEC <- function() {
     semi_join(sharesEU, by = c("period"))
 
 
+  # remove district space cooling from disaggregation
+  exclude <- exclude %>%
+    mutate(enduse = "space_cooling",
+           carrier = "heat")
+
+
   #--- Prepare toolDisaggregate Input
 
   # combine the already disaggregated data
@@ -166,6 +172,22 @@ calcFEbyEUEC <- function() {
                       left_join(regmapping, by = c("region")) %>%
                       filter(.data[["regionAgg"]] != "Africa") %>%
                       select(-"regionAgg"))
+
+
+  # Since the data on district cooling is very sparse and the low global penetration
+  # of the technology, we assume that all historic cooling demand is covered by
+  # electricity but assume that district cooling might play a more significant role
+  # in the future.
+
+  dataCorr <- dataFull %>%
+    select(-"enduse", -"carrier", -"value") %>%
+    unique() %>%
+    mutate(enduse = "space_cooling",
+           carrier = "heat",
+           value = 0)
+
+  dataFull <- rbind(dataCorr, dataFull)
+
 
 
 
