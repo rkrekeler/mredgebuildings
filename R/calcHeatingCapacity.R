@@ -33,7 +33,7 @@ calcHeatingCapacity <- function(swissFormular = FALSE) {
     heatCap <- ueDem / flh
   } else {
     # reference heating capacity from online tool (SFH, after 1994)
-    heatCapRef <- 0.060  # in kW/m2
+    heatCapRef <- 0.100  # in kW/m2
 
 
     # heating degree days

@@ -61,16 +61,9 @@ calcCarrierPrices <- function() {
 
   # map ECEMF carriers
   # assumption: liquids and gases remain fossil
-  carrierMap <- inline.data.frame(
-    "carrierECEMF;       carrier",
-    "Gases - Fossil Gas; gases",
-    "Liquids - Oil;      liquids",
-    "Liquids - Biomass;  NA",
-    "Electricity;        elec",
-    "Hydrogen;           NA",
-    "Solids - Coal;      coal",
-    "Solids - Biomass;   biomod"
-  )
+  carrierMap <- toolGetMapping("carrierMapping_ECEMF.csv",
+                               type = "sectoral",
+                               where = "mredgebuildings")
 
   # all considered price components
   # (drop CO2 price as this is a scenario assumption)
@@ -186,7 +179,17 @@ calcCarrierPrices <- function() {
 
   # Combine data ---------------------------------------------------------------
 
-  data <- rbind(prices, emi) %>%
+  data <- rbind(prices, emi)
+
+  # all carriers included?
+  carrier <- unique(getBrickMapping("heatingSystem.csv")["carrier"])
+  data <- data %>%
+    right_join(carrier, by = "carrier")
+  if (any(is.na(data))) {
+    stop("Incomplete mapping of energy carriers.")
+  }
+
+  data <- data  %>%
     as.quitte() %>%
     as.magpie()
 
