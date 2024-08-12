@@ -13,10 +13,12 @@
 #'
 #' @author Robin Hasse
 #'
+#' @importFrom brick getBrickMapping
 #' @importFrom madrat readSource calcOutput
 #' @importFrom magclass add_dimension as.magpie mselect getSets mbind
 #' @importFrom quitte inline.data.frame
 #' @importFrom dplyr .data %>% mutate filter everything
+#'   right_join
 #' @importFrom tidyr pivot_longer
 #' @export
 
@@ -62,27 +64,29 @@ calcLifetimeParams <- function(subtype) {
       # delay is approximated by adding it to the scale
       params <- inline.data.frame(
         "subsector;   hs;   scale; shape",
-        "residential; ehp1; 16.88;     2" # Residential Air-Source Heat Pumps
+        "Res;         ehp1; 16.88;     2" # Residential Air-Source Heat Pumps
       )
 
       # technologies given with typical ranges
       ranges <- inline.data.frame(
         "subsector;   hs;   from; to",
-        "residential; biom;   12; 25", # Residential Cordwood / Wood Pallet Stoves
-        "residential; gabo;   20; 30", # Residential Gas-Fired Boilers
-        "residential; reel;   15; 30", # Residential Electric Resistance (Unit) Heaters
-        "residential; libo;   18; 28"  # Residential Oil-Fired Boilers
+        "Res;         biom;   12; 25", # Residential Cordwood / Wood Pallet Stoves
+        "Res;         h2bo;   20; 30", # Residential Gas-Fired Boilers
+        "Res;         gabo;   20; 30", # Residential Gas-Fired Boilers
+        "Res;         reel;   15; 30", # Residential Electric Resistance (Unit) Heaters
+        "Res;         libo;   18; 28"  # Residential Oil-Fired Boilers
       )
 
       # technologies given only with central estimate
       central <- inline.data.frame(
-        "subsector;     hs;  mean",
-        "commercial;  ehp1;    21", # Commercial Rooftop Heat Pumps
-        "commercial;  gabo;    25", # Commercial Gas-Fired Boilers
-        "commercial;  reel;    18", # Commercial Electric Resistance Heaters
-        "commercial;  libo;    25", # Commercial Oil-Fired Boilers
-        "residential; dihe;    30", # value assumed, not from EIA
-        "commercial;  dihe;    30"  # value assumed, not from EIA
+        "subsector; hs;    mean",
+        "Com;       ehp1;    21", # Commercial Rooftop Heat Pumps
+        "Com;       h2bo;    25", # Commercial Gas-Fired Boilers
+        "Com;       gabo;    25", # Commercial Gas-Fired Boilers
+        "Com;       reel;    18", # Commercial Electric Resistance Heaters
+        "Com;       libo;    25", # Commercial Oil-Fired Boilers
+        "Res;       dihe;    30", # value assumed, not from EIA
+        "Com;       dihe;    30"  # value assumed, not from EIA
       )
 
 
@@ -147,9 +151,9 @@ calcLifetimeParams <- function(subtype) {
       # assume residential biomass value for commercial
       params <- params %>%
         rbind(params %>%
-                filter(.data[["subsector"]] == "residential",
+                filter(.data[["subsector"]] == "Res",
                        .data[["hs"]] == "biom") %>%
-                mutate(subsector = "commercial"))
+                mutate(subsector = "Com"))
 
       # assume biomass values for coal
       params <- params %>%
@@ -157,13 +161,20 @@ calcLifetimeParams <- function(subtype) {
                 filter(.data[["hs"]] == "biom") %>%
                 mutate(hs = "sobo"))
 
+      # all technologies included?
+      hs <- getBrickMapping("heatingSystem.csv")
+      params <- params %>%
+        right_join(hs["hs"], by = "hs")
+      if (any(is.na(params))) {
+        stop("Incomplete mapping of heating technologies.")
+      }
+
+
 
       ### map to building types ####
-      typMap <- c(
-        SFH = "residential",
-        MFH = "residential",
-        Com = "commercial"
-      )
+      typMap <- getBrickMapping("buildingType.csv")
+      typMap <- stats::setNames(typMap[["subsector"]], typMap[["typ"]])
+
       params <- params %>%
         pivot_longer(c("scale", "shape"), names_to = "variable") %>%
         as.magpie(datacol = "value")
@@ -218,7 +229,10 @@ calcLifetimeParams <- function(subtype) {
   # weight: FE demand
   feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
     mselect(period = "y2020", collapseNames = TRUE)
-  if (!"typ" %in% getSets(params)) {
+  if ("typ" %in% getSets(params)) {
+    feBuildings <- feBuildings %>%
+      mselect(typ = getItems(params, "typ"))
+  } else {
     feBuildings <- dimSums(feBuildings)
   }
 
