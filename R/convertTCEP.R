@@ -22,11 +22,7 @@ convertTCEP <- function(x) {
 
 
   # Enduse Mapping
-  # AL didn't map Middle East & Africa. Instead he mapped IND & other dev. Asia
-  # to both MIE and AFR.
-  # RH: I now map Middle East & Africa to MIE and AFR
-  # TODO: check this mapping #nolint
-  tcepMap <- toolGetMapping("regionmappingTCEP2.csv",
+  tcepMap <- toolGetMapping("regionmappingTCEP.csv",
                             type = "regional",
                             where = "mredgebuildings")
 
