@@ -40,7 +40,7 @@ calcCostRenovation <- function(energyLadder = FALSE) {
   ## Heating mark down ====
 
   # decrease installation cost if there is no technology switch
-  sameHsFactor <- 0.9
+  sameHsFactor <- 0.2
 
 
 
@@ -137,7 +137,7 @@ calcCostRenovation <- function(energyLadder = FALSE) {
     as.quitte(na.rm = TRUE) %>%
     select("region", "typ", "vin", "bs", capacity = "value")
 
-  # heating system installation cost: USD/kW -> USD/m2
+  # heating system purchasing cost: USD/kW -> USD/m2
   heatingCost <- calcOutput("HeatingSystem",
                             subtype = "Purchasing cost",
                             aggregate = FALSE) %>%
@@ -157,19 +157,38 @@ calcCostRenovation <- function(energyLadder = FALSE) {
                              .data[["hsr"]])) %>%
     left_join(heatingCost, by = c(hs.final = "hs"),
               relationship = "many-to-many") %>%
-    mutate(heatingCost = ifelse(.data[["hs"]] == .data[["hsr"]],
-                                sameHsFactor * .data[["heatingCost"]],
-                                ifelse(.data[["hsr"]] == "0",
-                                       0,
-                                       .data[["heatingCost"]]))) %>%
+    mutate(heatingCost = ifelse(.data[["hsr"]] == "0",
+                                0,
+                                .data[["heatingCost"]])) %>%
     select(-"hs.final")
+
+  # heating system installation cost (independent of capacity)
+  # rough numbers from BDEW Heizkostenvergleich cost/floor
+  installationCost <- inline.data.frame(
+    "typ; installationCost",
+    "SFH; 30",
+    "MFH; 10",
+    "Com; 6"
+  )
+  heatingCost <- heatingCost %>%
+    left_join(installationCost, by = "typ") %>%
+    mutate(installationCost = .data[["installationCost"]] *
+             ifelse(.data[["hsr"]] == "0",
+                    0,
+                    ifelse(.data[["hsr"]] == "reel",
+                           0.1,
+                           ifelse(.data[["hs"]] == .data[["hsr"]],
+                                  sameHsFactor,
+                                  1))),
+           heatingCost = .data[["heatingCost"]] + .data[["installationCost"]]) %>%
+    select(-"installationCost")
 
   # mark up for installation of central heating system (piping, etc.)
   # https://www.checkatrade.com/blog/cost-guides/central-heating-installation-cost/
   heatingCost <- heatingCost %>%
     mutate(heatingCost = .data[["heatingCost"]] +
              ifelse(.data[["hs"]] == "reel" & !.data[["hsr"]] %in% c("0", "reel"),
-                    3000 / 150 * 1.21, # units GBP/m2 * USD/GBP
+                    3000 / 150 * 1.21, # units: GBP / m2 * USD/GBP # nolint: commented_code_linter.
                     0))
 
   ## Total ====

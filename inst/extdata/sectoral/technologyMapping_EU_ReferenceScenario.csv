@@ -1,6 +1,7 @@
 technology,technologyBRICK,weightSFH,weightMFH,weightCom,comment
 Boilers gas (non-condensing),gabo,0.1,0.07,0.05,
 Boilers gas condensing*,gabo,0.8,0.67,0.45,
+Boilers gas condensing*,h2bo,1,0.75,0,
 Boilers oil (non-condensing),libo,0.8,0.8,0.8,
 Boilers oil condensing*,libo,0.2,0.2,0.2,
 Wood stoves or boiler pellets,biom,1,1,1,
@@ -16,4 +17,5 @@ CHP fuel cell**,NA,,,,
 District heating,dihe,1,1,1,
 Large scale gas boilers (non-condensing),gabo,0,0.03,0.05,
 Large scale gas boilers condensing,gabo,0,0.23,0.45,
+Large scale gas boilers condensing,h2bo,0,0.25,1,
 Wood stoves or boiler pellets,sobo,1,1,1,we assume similarity between wood stoves and coal heaters

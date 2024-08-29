@@ -7,6 +7,7 @@
 #'
 #' @author Robin Hasse
 #'
+#' @importFrom brick getBrickMapping
 #' @importFrom madrat toolGetMapping readSource toolCountryFill
 #' @importFrom magclass as.magpie getSets<- setNames mbind dimSums
 #'   time_interpolate
@@ -21,14 +22,22 @@ calcHeatingSystem <- function(subtype = c("Purchasing cost", "Efficiency")) {
 
   subtype <- match.arg(subtype)
 
+  # all heating technologies
+  hsMap <- getBrickMapping("heatingSystem.csv")
+
   # map heating technologies
-  hsMap <- toolGetMapping("technologyMapping_EU_ReferenceScenario.csv",
-                          type = "sectoral", where = "mredgebuildings",
-                          returnPathOnly = TRUE) %>%
+  euRefMap <- toolGetMapping("technologyMapping_EU_ReferenceScenario.csv",
+                             type = "sectoral", where = "mredgebuildings",
+                             returnPathOnly = TRUE) %>%
     read.csv(comment.char = "") %>%
     select(-"comment") %>%
     pivot_longer(matches("^weight"), names_to = "typ", values_to = "weight") %>%
-    mutate(typ = sub("^weight(.*)$", "\\1", .data[["typ"]]))
+    mutate(typ = sub("^weight(.*)$", "\\1", .data[["typ"]])) %>%
+    right_join(unique(hsMap["hs"]), by = c(technologyBRICK = "hs"))
+
+  if (any(is.na(euRefMap))) {
+    stop("Incomplete mapping of heating technologies.")
+  }
 
   # map building types to subsectors
   typMap <- inline.data.frame(
@@ -53,7 +62,7 @@ calcHeatingSystem <- function(subtype = c("Purchasing cost", "Efficiency")) {
            .data[["level"]] %in% c("Current", "central")) %>%
     left_join(typMap, by = "subsector", relationship = "many-to-many") %>%
     left_join(periodMap, by = "pointintime") %>%
-    left_join(hsMap, by = c("typ", "technology")) %>%
+    left_join(euRefMap, by = c("typ", "technology"), relationship = "many-to-many") %>%
     select("region", "period", hs = "technologyBRICK", "typ", "unit", "value",
            "weight") %>%
     filter(!is.na(.data[["hs"]])) %>%
@@ -65,6 +74,21 @@ calcHeatingSystem <- function(subtype = c("Purchasing cost", "Efficiency")) {
 
   switch(subtype,
     `Purchasing cost` = {
+      # until here, H2 boilers are just condensing gas boilers. We add
+      # 2500€/unit for the conversion to 100% H2 readiness (cf. ISE
+      # Heizkostenvergleich) and assume 10kW/unit capacity
+      # (cf. BDEW Heizkostenvergleich). The mark up reduces linearly to half its
+      # value until 2050. The value is deflated (1.39) to be consistent.
+      data <- data.frame(period = c(2020, 2050),
+                         hs = "h2bo",
+                         h2MarkUp = c(250, 125) / 1.39) %>%
+        interpolate_missing_periods(unique(data[["period"]]),
+                                    value = "h2MarkUp",
+                                    expand.values = TRUE) %>%
+        right_join(data, by = c("period", "hs")) %>%
+        mutate(value = .data[["value"]] + replace_na(.data[["h2MarkUp"]], 0)) %>%
+        select(-"h2MarkUp")
+
       # unit conversion EUR/kW -> USD/kW
       usd2eur <- usd2eur()
       data <- data %>%
