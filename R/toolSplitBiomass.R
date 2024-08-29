@@ -17,6 +17,7 @@
 #' @author Hagen Tockhorn
 #'
 #' @importFrom tidyr one_of
+#' @importFrom quitte factor.data.frame
 #'
 #' @export
 
@@ -93,7 +94,7 @@ toolSplitBiomass <- function(df,
     select(-matches(bioComponents)) %>%
     select(-"gdppop", -"shareTrad", -"biomass") %>%
     gather(key = "variable", value = "value", -one_of(keepCol)) %>%
-    quitte::factor.data.frame()
+    factor.data.frame()
 
 
   return(tmp[colnames(df)])

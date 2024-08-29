@@ -9,10 +9,10 @@ calcGDPPop <- function() {
 
   # LOAD DATA ------------------------------------------------------------------
 
-  gdp <- calcOutput("GDPPast", aggregate = FALSE, average2020 = FALSE, file = "f_gdp.cs4r") %>%
+  gdp <- calcOutput("GDPPast", aggregate = FALSE, average2020 = FALSE) %>%
     as.quitte()
 
-  pop <- calcOutput("PopulationPast", aggregate = FALSE, file = "f_pop.cs4r") %>%
+  pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
     as.quitte()
 
 

@@ -213,7 +213,8 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
       as.magpie()
 
     return(list(x = feData,
-                unit = "EJ",
+                unit = "EJ/yr",
+                min = 0,
                 description = "FE of carrier or end use in buildings demand in EJ"))
   }
 

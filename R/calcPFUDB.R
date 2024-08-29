@@ -46,7 +46,7 @@ calcPFUDB <- function() {
   addThermal <- function(df, mapping, fridgeShare) {
     df <- df %>%
       filter(.data[["enduse"]] != "lighting") %>%
-      left_join(regmappingEDGE %>%
+      left_join(mapping %>%
                   select(-"RegionCodeEUR", -"RegionCodeEUR_ETP", -"X") %>%
                   rename(region = "CountryCode") %>%
                   left_join(fridgeShare, by = "RegionCode") %>%

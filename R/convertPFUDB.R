@@ -12,7 +12,7 @@
 #' @importFrom dplyr %>% rename
 #' @importFrom rlang .data
 #' @importFrom tidyr unite
-#' @importFrom quitte as.quitte aggregate_map
+#' @importFrom quitte as.quitte aggregate_map factor.data.frame
 #' @importFrom magclass as.magpie
 #' @export
 
@@ -48,7 +48,7 @@ convertPFUDB <- function(x) {
 
   data <- data %>%
     as.quitte() %>%
-    quitte::factor.data.frame()
+    factor.data.frame()
 
 
   # Match Periods
@@ -107,7 +107,7 @@ convertPFUDB <- function(x) {
   # OUTPUT -------------------------------------------------------------------
 
   pfu <- pfu %>%
-    quitte::factor.data.frame() %>%
+    factor.data.frame() %>%
     droplevels() %>%
     as.magpie() %>%
     toolCountryFill()

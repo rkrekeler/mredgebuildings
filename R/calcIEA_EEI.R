@@ -111,7 +111,8 @@ calcIEA_EEI <- function(subtype = c("buildings")) { #nolint object_name_linter
 
   return(list(x = data,
               weight = NULL,
-              unit = "EJ",
+              unit = "EJ/yr",
+              min = 0,
               description = "IEA End Uses and Efficiency Indicators Database"))
 
 }

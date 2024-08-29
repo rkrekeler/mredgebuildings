@@ -169,7 +169,9 @@ calcFloorspacePast <- function() {
 #' @param endOfHistory upper temporal boundary of historic data
 #' @param periodBegin lower temporal boundary of historic data
 #'
-#' @return floorspace per capita with filled missing entries
+#' @importFrom quitte factor.data.frame
+#'
+#' @returns floorspace per capita with filled missing entries
 
 makeFloorspaceProjection <- function(df, gdppop, dens, endOfHistory, periodBegin) {
 
@@ -186,7 +188,7 @@ makeFloorspaceProjection <- function(df, gdppop, dens, endOfHistory, periodBegin
   # create full data set
   dataFull <- df %>%
     filter(.data[["demographic"]] == "Total") %>%
-    quitte::factor.data.frame() %>%
+    factor.data.frame() %>%
     interpolate_missing_periods(period = seq(periodBegin, endOfHistory)) %>%
     as.magpie() %>%
     toolCountryFill() %>%
@@ -217,14 +219,10 @@ makeFloorspaceProjection <- function(df, gdppop, dens, endOfHistory, periodBegin
     ungroup() %>%
 
     # correct prediction deviations if factor is available
-    mutate(pred = ifelse(is.na(.data[["factor"]]),
-                         .data[["pred"]],
-                         .data[["pred"]] * .data[["factor"]])) %>%
+    mutate(pred = .data[["pred"]] * replace.na(.data[["factor"]], 1)) %>%
 
     # fill missing values w/ predictions
-    mutate(value = ifelse(is.na(.data[["value"]]),
-                          .data[["pred"]],
-                          .data[["value"]])) %>%
+    mutate(value = .data[["pred"]] * replace.na(.data[["value"]], 1)) %>%
 
     # select columns
     select("region", "period", "variable", "unit", "demographic", "value")

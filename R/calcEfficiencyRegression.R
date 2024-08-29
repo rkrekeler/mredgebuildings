@@ -60,7 +60,7 @@ calcEfficiencyRegression <- function() {
     as.quitte()
 
   # Get Mapping (ISO<->PFU)
-  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type = "regional")
+  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type = "regional", where = "mredegebuildings")
 
   # Get Population Data
   pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
@@ -84,7 +84,7 @@ calcEfficiencyRegression <- function() {
 
   # Aggregate PFU Data to PFU Country Code
   data <- pfu %>%
-    mutate(value = ifelse(is.na(.data[["value"]]), 0, .data[["value"]])) %>%
+    mutate(value = replace_na(.data[["value"]], 0)) %>%
     unite("variable", "enduse", "carrier", sep = ".") %>%
     aggregate_map(mapping = regionmapping[!is.na(regionmapping$PFUDB), c("iso", "PFUDB")],
                   by = c("region" = "iso"),

@@ -605,29 +605,28 @@ compHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
                     x1 <- .tlim - 3*tlimStd
                     x2 <- .tlim + 3*tlimStd
 
-                    if (typeDD == "HDD") {
-                      f <- integral2(heatingFactor,
-                                     xmin = x1,
-                                     xmax = x2,
-                                     ymin = tamb - 3*tambStd,
-                                     ymax = min(.tlim, tamb + 3*tambStd),
-                                     tamb = tamb,
-                                     tambStd = tambStd,
-                                     tlim = .tlim,
-                                     tlimStd = tlimStd,
-                                     reltol = 1e-1)
-                    } else {
-                      f <- integral2(coolingFactor,
-                                     xmin = x1,
-                                     xmax = x2,
-                                     ymin = max(.tlim, tamb - 3*tambStd),
-                                     ymax = tamb + 3*tambStd,
-                                     tamb = tamb,
-                                     tambStd = tambStd,
-                                     tlim = .tlim,
-                                     tlimStd = tlimStd,
-                                     reltol = 1e-1)
-                    }
+                    switch(typeDD,
+                           HDD = {
+                             fun <- heatingFactor
+                             ymin <- tamb - 3 * tambStd
+                             ymax <- min(.tlim, tamb + 3 * tambStd)
+                           },
+                           CDD = {
+                             function <- coolingFactor
+                             ymin <- max(.tlim, tamb - 3 * tambStd)
+                             ymax <- tamb + 3 * tambStd
+                           }
+                         )
+                    f <- integral2(fun,
+                                   xmin = x1,
+                                   xmax = x2,
+                                   ymin = ymin,
+                                   ymax = ymax,
+                                   tamb = tamb,
+                                   tambStd = tambStd,
+                                   tlim = .tlim,
+                                   tlimStd = tlimStd,
+                                   reltol = 1e-1)
 
                     tmp <- data.frame("T_amb"        = tamb,
                                       "T_amb_K"      = round(tamb + 273.15, 1),

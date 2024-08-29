@@ -109,7 +109,7 @@ calcFEbyEUEC <- function() {
     mutate(unit = "fe") %>%
     toolDisaggregate(enduseShares  = sharesEU,
                      exclude       = exclude,
-                     dataDisagg    = feDisagg,git c
+                     dataDisagg    = feDisagg,
                      regionMapping = regmapping,
                      outliers      = c("IND", "CHN", "ZAF")) %>%
     select("region", "period", "unit", "carrier", "enduse", "value")
@@ -134,9 +134,12 @@ calcFEbyEUEC <- function() {
   # existing disaggregated data replaces values from optimization
   data <- ieaIODis %>%
     left_join(dataReplaceFull, by = c("region", "period", "carrier", "enduse")) %>%
-    mutate(value = ifelse(is.na(.data[["replaceValue"]]),
-                          .data[["value"]],
-                          .data[["replaceValue"]])) %>%
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    mutate(valueUncorrected = ifelse(is.na(.data[["replaceValue"]]),
+                                     .data[["value"]],
+                                     .data[["replaceValue"]]),
+           value = .data[["valueUncorrected"]] * .data[["value"]] / sum(.data[["value"]])) %>%
+    select(-"valueUncorrected") %>%    
     select("region", "period", "unit", "carrier", "enduse", "value")
 
 
@@ -160,10 +163,13 @@ calcFEbyEUEC <- function() {
     select(-"regionAgg") %>%
     group_by(across(-all_of(c("enduse", "carrier", "share", "value")))) %>%
     mutate(value = ifelse(.data[["enduse"]] == "space_cooling",
-                          ifelse(!(.data[["carrier"]] == "elec"),
-                                 .data[["value"]],
-                                 sum(.data[["value"]], na.rm = TRUE) * .data[["share"]]),
-                          .data[["value"]] * (1 - .data[["share"]]))) %>%
+                          ifelse(.data[["carrier"]] == "elec",
+                                 sum(.data[["value"]], na.rm = TRUE) * .data[["share"]],
+                                 0)
+                          .data[["value"]] * (1 - .data[["share"]])),
+           value = .data[["value"]] * ifelse(.data[["enduse"]] == "space_cooling",
+                                             1,
+                                             .data[["share"]] * sum(.data[["value"]]) / sum(.data[["value"]][.data[["enduse"]] == "space_cooling"]))) %>%
     ungroup() %>%
     select(-"share")
 
@@ -203,6 +209,7 @@ calcFEbyEUEC <- function() {
 
   return(list(x = dataFull,
               weight = NULL,
+              min = 0,
               unit = "EJ",
-              description = "Historic Final Energy Data from IEA"))
+              description = "Historic Final Energy Data from IEA disaggregated by end use"))
 }
