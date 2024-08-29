@@ -179,6 +179,8 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
         group_by(across(all_of(c("region", "period")))) %>%
         mutate(value = proportions(.data[["value"]])) %>%
         ungroup()
+    } else {
+      etpFilter <- shareCorr
     }
   }
 
@@ -188,7 +190,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
 
   # return only FE data
   if (isTRUE(feOnly)) {
-    feData <- shareCorr %>%
+    feData <- etpFilter %>%
       as.quitte() %>%
       mutate(value = .data[["value"]] * PJ2EJ,
              unit = "EJ") %>%

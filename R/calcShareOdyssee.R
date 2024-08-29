@@ -109,13 +109,17 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
     meanApplightShares <- odyssee %>%
       filter(.data[["enduse"]] %in% c("lighting", "appliances"),
              !is.na(.data[["value"]])) %>%
-      group_by(across(all_of(c("region", "period", "sector", "carrier")))) %>%
+      group_by(across(all_of(c("period", "sector", "carrier", "enduse")))) %>%
+      mutate(value = sum(.data[["value"]], na.rm = TRUE)) %>%
+      ungroup() %>%
+      group_by(across(all_of(c("period", "sector", "carrier")))) %>%
       mutate(value = proportions(.data[["value"]])) %>%
       ungroup() %>%
       group_by(across(all_of(c("period", "sector", "enduse")))) %>%
       mutate(share = mean(.data[["value"]])) %>%
       ungroup() %>%
-      select(all_of(c("period", "carrier", "sector", "enduse", "share")))
+      select(all_of(c("period", "carrier", "sector", "enduse", "share"))) %>%
+      unique()
 
     # split existing aggregated data into "appliances" and "lighting"
     applightData <- odysseeData %>%

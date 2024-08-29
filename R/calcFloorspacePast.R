@@ -14,12 +14,12 @@
 #' @author Robin Hasse, Antoine Levesque, Hagen Tockhorn
 #'
 #' @importFrom madrat readSource calcOutput toolCountryFill
-#' @importFrom quitte as.quitte calc_addVariable factor.data.frame
+#' @importFrom quitte as.quitte calc_addVariable factor.data.frame interpolate_missing_periods
 #' @importFrom dplyr filter mutate select anti_join group_by left_join %>%
-#' ungroup .data %>%
+#' ungroup .data %>% group_modify
 #' @importFrom rlang .data
 #' @importFrom magclass mbind as.magpie collapseDim mselect
-#' @importFrom tidyr spread
+#' @importFrom tidyr spread replace_na
 #'
 #' @export
 
@@ -37,25 +37,12 @@ calcFloorspacePast <- function() {
   }
 
 
-  #' Predict missing historic floorspace data
-  #'
-  #' A linear regression is performed to establish a general relationship between
-  #' floorspace per capita and gdp per capita and population density.
-  #' Predicted values are corrected w.r.t. to historical data where available,
-  #' otherwise the prediction is chosen.
-  #'
-  #' @param df data.frame containing floorspace per capita
-  #' @param gdppop data.frame containing gdp per capita
-  #' @param dens data.frame containing population density
-  #' @param endOfHistory upper temporal boundary of historic data
-  #' @param periodBegin lower temporal boundary of historic data
-  #'
-  #' @importFrom quitte factor.data.frame interpolate_missing_periods
-  #' @importFrom tidyr replace_na
-  #' @importFrom dplyr group_modify
-  #'
-  #' @returns floorspace per capita with filled missing entries
-
+  # Predict missing historic floorspace data
+  #
+  # A linear regression is performed to establish a general relationship between
+  # floorspace per capita and gdp per capita and population density.
+  # Predicted values are corrected w.r.t. to historical data where available,
+  # otherwise the prediction is chosen.
   makeFloorspaceProjection <- function(df, gdppop, dens, endOfHistory, periodBegin) {
 
     # Clean data

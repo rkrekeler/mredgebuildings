@@ -42,26 +42,6 @@ calcPFUDB <- function() {
     }
   }
 
-  # convert enduse "appliances" to "refrigerators" with respective scaling factor
-  addThermal <- function(df, mapping, fridgeShare) {
-    df <- df %>%
-      filter(.data[["enduse"]] != "lighting") %>%
-      left_join(mapping %>%
-                  select(-"RegionCodeEUR", -"RegionCodeEUR_ETP", -"X") %>%
-                  rename(region = "CountryCode") %>%
-                  left_join(fridgeShare, by = "RegionCode") %>%
-                  select(-"RegionCode"),
-                by = "region") %>%
-      mutate(value = ifelse(.data[["enduse"]] != "appliances",
-                            .data[["value"]],
-                            .data[["value"]] * .data[["share"]]),
-             enduse = ifelse(.data[["enduse"]] == "appliances",
-                             "refrigerators",
-                             as.character(.data[["enduse"]]))) %>%
-      select(-"share")
-    return(df)
-  }
-
 
 
   # PARAMETERS -----------------------------------------------------------------
@@ -175,7 +155,7 @@ calcPFUDB <- function() {
     mutate(value = ifelse(is.na(.data[["value.x"]]),
                           .data[["value.y"]],
                           .data[["value.x"]])) %>%
-    addThermal(regmappingEDGE, fridgeShare) %>%
+    toolAddThermal(regmappingEDGE, fridgeShare) %>%
     select("region", "period", "carrier", "enduse", "value")
 
 

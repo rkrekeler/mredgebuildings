@@ -23,7 +23,7 @@
 #' @param dataDisagg data.frame similar to \code{data} but already disaggregated
 #'   by carriers and end uses. The average distribution of its disaggregation
 #'   will be used as the target distribution for the minisation.
-#' @param regionmapping data.frame with the columns \code{region} and
+#' @param regionMapping data.frame with the columns \code{region} and
 #'   \code{regionAgg} that maps the regions between \code{data} and
 #'   \code{enduseShares}.
 #' @param outliers list of regions where naive disaggregation estimate shall
@@ -238,7 +238,7 @@ toolDisaggregate <- function(data,
 
 
 
-#' Disaggregate energy demand within on aggregated region
+#' Disaggregate energy demand within an aggregated region
 #'
 #' Disaggregate regional energy demand per carrier by end use while meeting the
 #' end use shares in the aggregated region.

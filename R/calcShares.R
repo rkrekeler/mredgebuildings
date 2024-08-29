@@ -24,7 +24,6 @@
 #' @param subtype specifies share
 #' @param carrierCorrection allows additional corrections
 #' @param feOnly specifies if shares or quantities are returned
-#' @param feWeights calculate additional FE weights for share aggregation
 #'
 #' @note The parameter "feOnly" is only applicable to IEA_ETP and TCEP data,
 #' since this is the necessary data to do a full disaggregation of EU and EC
@@ -38,9 +37,8 @@
 #'
 #' @author Hagen Tockhorn, Robin Hasse
 #'
-#' @importFrom rlang .data
 #' @importFrom dplyr mutate as_tibble filter select rename group_by across
-#'   all_of ungroup %>% .data left_join summarise group_modify cross_join
+#'   all_of ungroup %>% .data left_join reframe group_modify cross_join .data
 #' @importFrom tidyr replace_na unite complete
 #' @importFrom madrat toolGetMapping calcOutput readSource toolCountryFill
 #' @importFrom magclass time_interpolate as.magpie
@@ -53,8 +51,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
                                    "enduse_nonthermal",
                                    "enduse_thermal"),
                        carrierCorrection = FALSE,
-                       feOnly = FALSE,
-                       feWeights = TRUE) {
+                       feOnly = FALSE) {
 
 
 
@@ -64,43 +61,6 @@ calcShares <- function(subtype = c("carrier_nonthermal",
 
   shareOf  <- strsplit(subtype, "_")[[1]][1]
   thermVar <- strsplit(subtype, "_")[[1]][2]
-
-
-
-  #---Corrections for specific carrier shares
-  # nolint start
-  correction <- inline.data.frame(
-    "region;        enduse;                                carrier; value",
-    ".*;            water_heating;                         heat;    0",
-    "(OCD|EUR|USA); (water_heating|cooking);               biomod;  0",
-    "EUR;           (water_heating|cooking);               biotrad; 0",
-    "RUS;           space_heating;                         heat;    0.60",
-    "RUS;           (water_heating|cooking);               natgas;  0.70",
-    "RUS;           (water_heating|cooking);               elec;    0.07",
-    "RUS;           space_heating;                         elec;    0.03",
-    "RUS;           (space_heating|water_heating|cooking); coal;    0.04",
-    "RUS;           (space_heating|water_heating|cooking); petrol;  0.10",
-    "IND;           (space_heating|water_heating);         biotrad; 0.80",
-    "IND;           (space_heating|water_heating|cooking); coal;    0.10",
-    "IND;           (space_heating|water_heating);         petrol;  0.12",
-    "IND;           (space_heating|water_heating);         natgas;  0",
-    "IND;           (space_heating|water_heating);         elec;    0.02",
-    "IND;           cooking;                               natgas;  0.04",
-    "IND;           cooking;                      (biotrad|petrol); 0.50") %>%
-    unite("regex", all_of(c("region", "enduse", "carrier")), sep = "\\.")
-  # nolint end
-
-
-  # Enduse-Carrier combinations which will be systematically excluded
-  exclude <- toolGetMapping(name  = "excludeEnduseCarrier.csv",
-                            type  = "sectoral",
-                            where = "mredgebuildings")
-
-
-  # Percentage of Appliances for Refrigerators
-  fridgeShare <- rbind(data.frame(RegionCode = "USA", share  = 0.12),
-                       data.frame(RegionCode = c("EUR", "OCD", "RUS", "JPN"), share = 0.17),
-                       data.frame(RegionCode = c("CHN", "IND", "NCD", "AFR", "MIE", "OAS"), share = 0.3))
 
 
   # Regions taken into account from WEO
@@ -113,11 +73,6 @@ calcShares <- function(subtype = c("carrier_nonthermal",
   #--- Main Datasets
 
   # Shares
-
-  # IEA
-  ieaIO <- calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings",
-                      aggregate = FALSE) %>%
-    as.quitte(na.rm = TRUE)
 
   # Odyssee
   sharesOdyssee <-
@@ -171,6 +126,21 @@ calcShares <- function(subtype = c("carrier_nonthermal",
                                   type  = "regional",
                                   where = "mredgebuildings")
 
+  # Carrier share corrections
+  shareCorrections <- toolGetMapping(name  = "correction_carrierShares.csv",
+                                     type  = "sectoral",
+                                     where = "mredgebuildings")
+
+  # Percentage of Appliances for Refrigerators
+  fridgeShare <- toolGetMapping(name  = "fridgeShare.csv",
+                                type  = "sectoral",
+                                where = "mredgebuildings")
+
+  # Enduse-Carrier combinations which will be systematically excluded
+  exclude <- toolGetMapping(name  = "excludeEnduseCarrier.csv",
+                            type  = "sectoral",
+                            where = "mredgebuildings")
+
 
 
 
@@ -183,31 +153,6 @@ calcShares <- function(subtype = c("carrier_nonthermal",
       ungroup()
   }
 
-
-  addThermal <- function(df, mapping, fridgeShare) {
-    df <- df %>%
-      filter(.data[["enduse"]] != "lighting") %>%
-      left_join(regmappingEDGE %>%
-                  select(-"RegionCodeEUR", -"RegionCodeEUR_ETP", -"X") %>%
-                  rename(region = "CountryCode") %>%
-                  left_join(fridgeShare, by = "RegionCode") %>%
-                  select(-"RegionCode"),
-                by = "region") %>%
-      mutate(value = ifelse(.data[["enduse"]] != "appliances",
-                            .data[["value"]],
-                            .data[["value"]] * .data[["share"]]),
-             enduse = ifelse(.data[["enduse"]] == "appliances",
-                             "refrigerators",
-                             as.character(.data[["enduse"]]))) %>%
-      select(-"share")
-
-    if (!feOnly) {
-      df <- normalize(df, shareOf)
-      return(df)
-    }
-
-    return(df)
-  }
 
 
   # PROCESS DATA ---------------------------------------------------------------
@@ -244,7 +189,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
 
 
 
-    if (!feOnly) {
+    if (isFALSE(feOnly)) {
       # Extrapolate ETP FE Data
       evolutionFactor <- sharesTCEP %>%
         left_join(regmappingETP %>%
@@ -307,62 +252,65 @@ calcShares <- function(subtype = c("carrier_nonthermal",
         select(-"value.x", -"value.y")
     }
 
-    if (feOnly || feWeights) {
-      # Extrapolate ETP FE Data
-      evolutionFactor <- dataTCEP %>%
-        left_join(regmappingETP %>%
-                    select("CountryCode", "EEAReg") %>%
-                    rename(region = "CountryCode",
-                           regionAgg = "EEAReg"),
-                  by = "region") %>%
-        group_by(across(all_of(c("regionAgg", "enduse", "period")))) %>%
-        summarise(value = sum(.data[["value"]], na.rm = TRUE)) %>%
-        ungroup() %>%
-        group_by(across(all_of(c("regionAgg", "enduse")))) %>%
-        summarise(factor = .data[["value"]] / dplyr::lead(.data[["value"]])) %>%
-        ungroup() %>%
-        filter(!is.na(.data[["factor"]])) %>%
-        left_join(regmappingETP %>%
-                    select("CountryCode", "EEAReg") %>%
-                    rename(region = "CountryCode",
-                           regionAgg = "EEAReg"),
-                  by = "regionAgg") %>%
-        select(-"regionAgg")
+
+    # Calculate FE Data
+
+    # Extrapolate ETP FE Data
+    evolutionFactor <- dataTCEP %>%
+      left_join(regmappingETP %>%
+                  select("CountryCode", "EEAReg") %>%
+                  rename(region = "CountryCode",
+                         regionAgg = "EEAReg"),
+                by = "region") %>%
+      group_by(across(all_of(c("regionAgg", "enduse", "period")))) %>%
+      reframe(value = sum(.data[["value"]], na.rm = TRUE)) %>%
+      group_by(across(all_of(c("regionAgg", "enduse")))) %>%
+      reframe(factor = .data[["value"]] / dplyr::lead(.data[["value"]])) %>%
+      filter(!is.na(.data[["factor"]])) %>%
+      left_join(regmappingETP %>%
+                  select("CountryCode", "EEAReg") %>%
+                  rename(region = "CountryCode",
+                         regionAgg = "EEAReg"),
+                by = "regionAgg") %>%
+      select(-"regionAgg")
 
 
-      dataETPstart <- feETP %>%
-        left_join(evolutionFactor, by = c("region", "enduse")) %>%
-        mutate(value = .data[["value"]] * .data[["factor"]],
-               period = 2000) %>%
-        select(-"factor") %>%
-        filter(!is.na(.data[["value"]]))
+    dataETPstart <- feETP %>%
+      left_join(evolutionFactor, by = c("region", "enduse")) %>%
+      mutate(value = .data[["value"]] * .data[["factor"]],
+             period = 2000) %>%
+      select(-"factor") %>%
+      filter(!is.na(.data[["value"]]))
 
 
-      dataETPfull <- rbind(dataETPstart,
-                           feETP %>%
-                             filter(!is.na(.data[["value"]])))
+    dataETPfull <- rbind(dataETPstart,
+                         feETP %>%
+                           filter(!is.na(.data[["value"]])))
 
 
-      dataETPfull <- dataETPfull %>%
-        select(-"unit") %>%
-        quitte::factor.data.frame() %>%
-        as.quitte() %>%
-        interpolate_missing_periods(period = seq(1990, 2020)) %>%
-        group_by(across(all_of(c("region", "enduse")))) %>%
-        group_modify(~ extrapolateMissingPeriods(.x, key = "value")) %>%
-        ungroup() %>%
-        select("region", "period", "enduse", "value")
+    dataETPfull <- dataETPfull %>%
+      select(-"unit") %>%
+      quitte::factor.data.frame() %>%
+      as.quitte() %>%
+      interpolate_missing_periods(period = seq(1990, 2020)) %>%
+      group_by(across(all_of(c("region", "enduse")))) %>%
+      group_modify(~ extrapolateMissingPeriods(.x, key = "value")) %>%
+      ungroup() %>%
+      select("region", "period", "enduse", "value")
 
 
-      # NOTE: The linear regression might lead to negative values which will be
-      # filled up with small values and then re-normalized.
-      # (However, this is a very practical fix...)
+    # NOTE: The linear regression might lead to negative values which will be
+    # filled up with small values and then re-normalized.
+    # (However, this is a very practical fix...)
 
-      dataETPfull <- dataETPfull %>%
-        mutate(value = ifelse(.data[["value"]] < 0, 1e-6, .data[["value"]]))
+    dataETPfull <- dataETPfull %>%
+      mutate(value = ifelse(.data[["value"]] < 0, 1e-6, .data[["value"]]))
 
-      if (feOnly) {data  <- dataETPfull} #nolint
-      else        {regFE <- dataETPfull} #nolint
+    if (feOnly) {
+      data  <- dataETPfull
+    } else {
+      regFE <- dataETPfull %>%
+        mutate(value = replace_na(.data[["value"]], 0))
     }
   }
 
@@ -383,7 +331,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
       interpolate_missing_periods(period = seq(1990, 2020), expand.values = TRUE)
 
 
-    if (carrierCorrection == TRUE) {
+    if (isTRUE(carrierCorrection)) {
       # The Carrier resolution will be extended by a further added resolution for
       # Enduses, which are however not disaggregated. This only serves the purpose
       # of facilitating specific corrections.
@@ -445,24 +393,20 @@ calcShares <- function(subtype = c("carrier_nonthermal",
 
 
       # Make more specific corrections
-      for (i in rownames(correction)) {
-        data <- data %>%
-          mutate(value = unlist(ifelse(
-            grepl(correction[i, "regex"],
-                  paste(.data[["RegionCode"]], .data[["enduse"]], .data[["carrier"]],
-                        sep = ".")),
-            correction[i, "value"],
-            .data[["value"]]
-          )))
-      }
-
-
-      # Remove Mapping Column
-      data <- select(data, -"RegionCode")
-
-      # Re-Normalize
-      data <- normalize(data, shareOf)
+      data <- data %>%
+        left_join(shareCorrections, by = c("RegionCode" = "region", "enduse", "carrier")) %>%
+        mutate(value = ifelse(is.na(.data[["correction"]]),
+                              .data[["value"]],
+                              .data[["correction"]])) %>%
+        select(-"correction", -"RegionCode") %>%
+        normalize(shareOf)
     }
+  }
+
+  if (isFALSE(feOnly)) {
+    # replace NA's
+    data <- data %>%
+      mutate(value = replace_na(.data[["value"]], 0))
   }
 
 
@@ -470,39 +414,13 @@ calcShares <- function(subtype = c("carrier_nonthermal",
   if (thermVar == "thermal") {
     if (shareOf == "enduse") {
       data <- data %>%
-        addThermal(regmappingEDGE, fridgeShare)
+        toolAddThermal(regmappingEDGE, fridgeShare, feOnly = FALSE, shareOf)
 
-      if (feWeights) {
+      if (isFALSE(feOnly)) {
         regFE <- regFE %>%
-          addThermal(regmappingEDGE, fridgeShare)
+          toolAddThermal(regmappingEDGE, fridgeShare)
       }
     }
-  }
-
-  #---Weights: Regional Shares of FE
-  # Weights consist of the share of each region's FE demand relative to global FE demand.
-  # FE data is taken from ieaIO.
-  regShare <- ieaIO %>%
-    mutate(carrier = .data[["variable"]]) %>%
-    select("region", "period", "carrier", "value") %>%
-    group_by(across(all_of(c("period", "region")))) %>%
-    filter(!all(.data[["value"]] == 0)) %>%
-    summarise(value = sum(.data[["value"]], na.rm = TRUE)) %>%
-    ungroup() %>%
-    group_by(across(all_of(c("region")))) %>%
-    complete(period = unique(data$period)) %>%
-    ungroup() %>%
-    interpolate_missing_periods(expand.values = TRUE) %>%
-    group_by(across(all_of(c("period")))) %>%
-    mutate(value = proportions(.data[["value"]]))
-
-  regFE <- regFE %>%
-    mutate(value = replace_na(.data[["value"]], 0))
-
-
-  if (feWeights) {
-    data <- data %>%
-      mutate(value = replace_na(.data[["value"]], 0))
   }
 
 
@@ -516,30 +434,24 @@ calcShares <- function(subtype = c("carrier_nonthermal",
     as.magpie() %>%
     toolCountryFill(1, verbosity = 2)
 
-  regShare <- regShare %>%
-    as.magpie() %>%
-    collapseDim() %>%
-    time_interpolate(getItems(data, 2)) %>%
-    toolCountryFill(1, verbosity = 2)
-
-  regFE <- regFE %>%
-    as.magpie() %>%
-    collapseDim() %>%
-    time_interpolate(getItems(data, 2)) %>%
-    toolCountryFill(1, verbosity = 2)
-
-
 
   if (isTRUE(feOnly)) {
-    weight <- regShare
-    unit <- "EJ"
-    max <- NULL
+    weight <- NULL
+    unit   <- "EJ"
+    max    <- NULL
 
     description <- "Final energy demand of carrier or end use in buildings"
   } else {
+    regFE <- regFE %>%
+      as.magpie() %>%
+      collapseDim() %>%
+      time_interpolate(getItems(data, 2)) %>%
+      toolCountryFill(1, verbosity = 2)
+
     weight <- regFE
-    unit <- "1"
-    max <- 1
+    unit   <- "1"
+    max    <- 1
+
     description <- "Share of carrier or end use in buildings final energy demand"
   }
 
