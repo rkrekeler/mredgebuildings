@@ -21,24 +21,13 @@
 #' @importFrom madrat readSource toolCountryFill
 #' @importFrom quitte as.quitte revalue.levels
 #' @importFrom dplyr filter %>% mutate group_by across all_of left_join
-#' summarise
-#' @importFrom rlang .data syms
+#' summarise .data syms
 #' @importFrom tidyr separate replace_na complete
 #' @importFrom utils tail
 #' @export
 
 calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
                              feOnly = FALSE) {
-  # FUNCTIONS ------------------------------------------------------------------
-
-  # Calculate Shares w.r.t colShare
-  calcShares <- function(data, colShare) {
-    data %>%
-      group_by(across(-all_of(c(colShare, "value")))) %>%
-      mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE)) %>%
-      ungroup()
-  }
-
 
   # READ-IN DATA ---------------------------------------------------------------
 
@@ -53,32 +42,34 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
     select(-"model", -"scenario", -"unit")
 
 
+  # carrier mapping
+  carrierMap <- toolGetMapping(name = "carrierMap_Odyssee.csv",
+                               type = "sectoral",
+                               where = "mredgebuildings") %>%
+    pull("EDGE", "Odyssee")
+
+  # enduse mapping
+  enduseMap <- toolGetMapping(name = "enduseMap_Odyssee.csv",
+                              type = "sectoral",
+                              where = "mredgebuildings") %>%
+    pull("EDGE", "Odyssee")
+
+  # sector mapping
+  sectorMap <- toolGetMapping(name = "sectorMap_Odyssee.csv",
+                              type = "sectoral",
+                              where = "mredgebuildings") %>%
+    pull("EDGE", "Odyssee")
+
+
+
   # PARAMETERS -----------------------------------------------------------------
 
   subtype <- match.arg(subtype)
   shareOf <- strsplit(subtype, "_")[[1]]
 
-  # Variable Mappings
-  revalCarrier <- c(cms = "coal",
-                    pet = "petrol",
-                    gaz = "natgas",
-                    vap = "heat",
-                    enc = "biomod",
-                    elc = "elec")
-
-  revalSector <- c(cfres = "residential",
-                   cfter = "services")
-
-  revalEnduse <- c(chf = "space_heating",
-                   ecs = "water_heating",
-                   cui = "cooking",
-                   cli = "space_cooling",
-                   els1 = "appliances",
-                   lgt = "lighting")
-
-  vars <- expand.grid(names(revalCarrier),
-                      names(revalSector),
-                      names(revalEnduse)) %>%
+  vars <- expand.grid(names(carrierMap),
+                      names(sectorMap),
+                      names(enduseMap)) %>%
     apply(1, "paste", collapse = "")
 
 
@@ -92,9 +83,9 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
     mutate(region = droplevels(.data[["region"]]),
            variable = gsub("_.*$", "", .data[["variable"]])) %>%
     separate("variable", c("carrier", "sector", "enduse"), c(3, 8)) %>%
-    revalue.levels(carrier = revalCarrier,
-                   sector  = revalSector,
-                   enduse  = revalEnduse) %>%
+    revalue.levels(carrier = carrierMap,
+                   sector  = sectorMap,
+                   enduse  = enduseMap) %>%
     interpolate_missing_periods(expand.values = TRUE)
 
 
@@ -108,10 +99,10 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
 
   # Fill missing "appliances"/"lighting" entries if "appliances_light" has non-NA entries.
   if (subtype %in% c("enduse", "enduse_carrier")) {
-    revalEnduse <- c(els = "appliances_light")
-    vars <- expand.grid(names(revalCarrier),
-                        names(revalSector),
-                        names(revalEnduse)) %>%
+    enduseMap["els"] <- "appliances_light"
+    vars <- expand.grid(names(carrierMap),
+                        names(sectorMap),
+                        names(enduseMap)) %>%
       apply(1, "paste", collapse = "")
 
     # mean distribution of FE between "appliances" and "lighting"
@@ -133,9 +124,9 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
       mutate(region = droplevels(.data[["region"]]),
              variable = gsub("_.*$", "", .data[["variable"]])) %>%
       separate("variable", c("carrier", "sector", "enduse"), c(3, 8)) %>%
-      revalue.levels(carrier = revalCarrier,
-                     sector  = revalSector,
-                     enduse  = revalEnduse) %>%
+      revalue.levels(carrier = carrierMap,
+                     sector  = sectorMap,
+                     enduse  = enduseMap) %>%
       interpolate_missing_periods(expand.values = TRUE) %>%
       pivot_wider(names_from = "enduse", values_from = "value") %>%
       left_join(meanApplightShares,
@@ -177,7 +168,7 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
       group_by(across(all_of(c("region", "period", shareOf)))) %>%
       summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
       ungroup() %>%
-      calcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1)) %>%
+      toolCalcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1)) %>%
       mutate(value = replace_na(.data[["value"]], 0)) %>%
       complete(!!!syms(c("region", "period", shareOf))) %>%
       left_join(shareGlobal, by = shareOf) %>%
@@ -185,7 +176,7 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
                             .data[["value.y"]],
                             .data[["value.x"]])) %>%
       select(-"value.x", -"value.y") %>%
-      calcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1))
+      toolCalcShares(if (subtype == "enduse_carrier") shareOf else tail(shareOf, 1))
 
 
     # Weights: regional share of final energy

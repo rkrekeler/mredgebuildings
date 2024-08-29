@@ -38,14 +38,11 @@ convertTCEP <- function(x) {
 
   # PARAMETERS -----------------------------------------------------------------
 
-  enduseMapping <- c(
-    "Space heating"         = "space_heating",
-    "Space cooling"         = "space_cooling",
-    "Water heating"         = "water_heating",
-    "Lighting"              = "lighting",
-    "Cooking"               = "cooking",
-    "Appliances and other"  = "appliances"
-  )
+  # enduse mapping
+  enduseMap <- toolGetMapping(name = "enduseMap_TCEP.csv",
+                              type = "sectoral",
+                              where = "mredgebuildings") %>%
+    pull("EDGE", "TCEP")
 
 
   # PROCESS DATA ---------------------------------------------------------------
@@ -54,7 +51,7 @@ convertTCEP <- function(x) {
   data <- data %>%
     as.quitte() %>%
     select("region", "period", "variable", "unit", "value") %>%
-    revalue.levels(variable = enduseMapping)
+    revalue.levels(variable = enduseMap)
 
   # correct FE enduse data for "appliances" in India
   data <- data %>%

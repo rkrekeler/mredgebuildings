@@ -87,8 +87,8 @@ calcFEbyEUEC <- function() {
 
   # remove district space cooling from disaggregation
   exclude <- exclude %>%
-    mutate(enduse = "space_cooling",
-           carrier = "heat")
+    rbind(data.frame(enduse = "space_cooling",
+                     carrier = "heat"))
 
 
   #--- Prepare toolDisaggregate Input
@@ -139,7 +139,7 @@ calcFEbyEUEC <- function() {
                                      .data[["value"]],
                                      .data[["replaceValue"]]),
            value = .data[["valueUncorrected"]] * .data[["value"]] / sum(.data[["value"]])) %>%
-    select(-"valueUncorrected") %>%    
+    select(-"valueUncorrected") %>%
     select("region", "period", "unit", "carrier", "enduse", "value")
 
 
@@ -165,11 +165,12 @@ calcFEbyEUEC <- function() {
     mutate(value = ifelse(.data[["enduse"]] == "space_cooling",
                           ifelse(.data[["carrier"]] == "elec",
                                  sum(.data[["value"]], na.rm = TRUE) * .data[["share"]],
-                                 0)
+                                 0),
                           .data[["value"]] * (1 - .data[["share"]])),
            value = .data[["value"]] * ifelse(.data[["enduse"]] == "space_cooling",
                                              1,
-                                             .data[["share"]] * sum(.data[["value"]]) / sum(.data[["value"]][.data[["enduse"]] == "space_cooling"]))) %>%
+                                             .data[["share"]] * sum(.data[["value"]]) /
+                                               sum(.data[["value"]][.data[["enduse"]] == "space_cooling"]))) %>%
     ungroup() %>%
     select(-"share")
 

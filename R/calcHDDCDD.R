@@ -602,9 +602,10 @@ compHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
                   tlim[[typeDD]], function(.tlim) {
 
                     # tlim integration boundaries
-                    x1 <- .tlim - 3*tlimStd
-                    x2 <- .tlim + 3*tlimStd
+                    x1 <- .tlim - 3 * tlimStd
+                    x2 <- .tlim + 3 * tlimStd
 
+                    # nolint start
                     switch(typeDD,
                            HDD = {
                              fun <- heatingFactor
@@ -612,11 +613,13 @@ compHDDCDDFactors <- function(tlow, tup, tlim, tambStd = 5, tlimStd = 5) {
                              ymax <- min(.tlim, tamb + 3 * tambStd)
                            },
                            CDD = {
-                             function <- coolingFactor
+                             fun  <- coolingFactor
                              ymin <- max(.tlim, tamb - 3 * tambStd)
                              ymax <- tamb + 3 * tambStd
                            }
-                         )
+                    )
+                    # nolint end
+
                     f <- integral2(fun,
                                    xmin = x1,
                                    xmax = x2,

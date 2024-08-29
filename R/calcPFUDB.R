@@ -107,13 +107,6 @@ calcPFUDB <- function() {
     as.quitte()
 
 
-  sharesOdyssee <- calcOutput("ShareOdyssee",
-                              subtype = "enduse_carrier",
-                              feOnly = FALSE,
-                              aggregate = FALSE) %>%
-    as.quitte()
-
-
   # FE IEA EEI data
   feIEAEEI <- calcOutput("IEA_EEI",
                          subtype = "buildings",
@@ -144,6 +137,10 @@ calcPFUDB <- function() {
 
   # PROCESS DATA ---------------------------------------------------------------
 
+  sharesEU <- sharesEU %>%
+    select("region", "period", "enduse", "value")
+
+
   pfu <- pfu %>%
     # Generalize Heat Carriers
     sumDf(c("Heat", "Geothermal", "Solar"), "heat") %>%
@@ -168,37 +165,28 @@ calcPFUDB <- function() {
                   forceAggregation = TRUE)
 
 
+
   ## Prepare toolDisaggregate Input ====
 
-  # calculate enduse-carrier shares for IEA EEI data
-  sharesIEAEEI <- feIEAEEI %>%
-    group_by(across(all_of(c("region", "period")))) %>%
-    mutate(value = replaceNAwithZero(.data[["value"]]),
-           value = proportions(.data[["value"]])) %>%
-    ungroup()
-
-  sharesReplace <- sharesOdyssee %>%
-    left_join(sharesIEAEEI, by = c("region", "period", "carrier", "enduse")) %>%
-    mutate(value = ifelse(is.na(.data[["value.x"]]),
-                          .data[["value.y"]],
-                          .data[["value.x"]])) %>%
-    select("region", "period", "carrier", "enduse", "value")
-
-  # note: hard-coded the fridge share so that the FE data becomes compliant with
-  # the remaining input (can be done more nicely)
-
-  # correct fridgeShare
-  sharesReplace <- sharesReplace %>%
-    addThermal(regmappingEDGE, fridgeShare, feOnly = TRUE)
-
+  # mix already existing disaggregated data for share estimation
   feDisagg <- feOdyssee %>%
     left_join(feIEAEEI,
               by = c("region", "period", "carrier", "enduse")) %>%
     mutate(value = ifelse(is.na(.data[["value.x"]]),
                           .data[["value.y"]],
                           .data[["value.x"]])) %>%
-    addThermal(regmappingEDGE, fridgeShare, feOnly = TRUE) %>%
+    addThermal(regmappingEDGE, fridgeShare) %>%
     select("region", "period", "carrier", "enduse", "value")
+
+
+  # calculate shares for already disaggregated data
+  sharesReplace <- feDisagg %>%
+    group_by(across(all_of(c("region", "period")))) %>%
+    mutate(value = replaceNAwithZero(.data[["value"]])) %>%
+    ungroup() %>%
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    mutate(value = proportions(.data[["value"]])) %>%
+    ungroup()
 
 
   # Extract regions with existing disaggregated FE shares
@@ -207,22 +195,6 @@ calcPFUDB <- function() {
     pull("region") %>%
     unique()
 
-  # re-aggregate Odyssee shares to carrier level
-  sharesReplace <- sharesReplace %>%
-    filter(.data[["region"]] %in% replaceRegs) %>%
-    mutate(value = ifelse(is.na(.data[["value"]]),
-                          0,
-                          .data[["value"]])) %>%
-    filter(.data[["enduse"]] != "lighting") %>%
-    mutate(value = .data[["value"]] * ifelse(.data[["enduse"]] != "appliances",
-                                             1,
-                                             fridgeShare),
-           enduse = ifelse(.data[["enduse"]] == "appliances",
-                           "refrigerators",
-                           as.character(.data[["enduse"]]))) %>%
-    group_by(across(all_of(c("region", "period", "carrier")))) %>%
-    mutate(value = proportions(.data[["value"]])) %>%
-    ungroup()
 
   # exclude specific carrier/enduse combinations
   sharesReplace <- rbind(
@@ -232,10 +204,6 @@ calcPFUDB <- function() {
     sharesReplace %>%
       anti_join(exclude, by = c("enduse", "carrier"))
   )
-
-
-  sharesEU <- sharesEU %>%
-    select("region", "period", "enduse", "value")
 
 
   # data excluded from disaggregation
@@ -269,11 +237,13 @@ calcPFUDB <- function() {
                      regionMapping = regmapping) %>%
     select(colnames(pfuNonTherm))
 
+
   # Use carrier-enduse distribution to apply on useful energy
   shares <- pfuThermFE %>%
     group_by(across(all_of(c("region", "period", "carrier")))) %>%
     mutate(share = proportions(.data[["value"]])) %>%
     select(-"value", -"unit")
+
 
   # disaggregate useful energy with calculated shares
   pfuTherm <- pfu %>%

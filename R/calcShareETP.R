@@ -26,16 +26,6 @@
 #' @export
 
 calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
-  # FUNCTIONS ------------------------------------------------------------------
-
-  # Calculate Shares
-  calcShares <- function(data, colShare) {
-    data %>%
-      group_by(across(-all_of(c(colShare, "value")))) %>%
-      mutate(value = .data[["value"]] / sum(.data[["value"]], na.rm = TRUE)) %>%
-      ungroup()
-  }
-
 
   # READ-IN DATA ---------------------------------------------------------------
 
@@ -46,6 +36,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
   gdppop <- calcOutput("GDPPop", aggregate = FALSE) %>%
     as.quitte() %>%
     select(-"model", -"scenario", -"unit")
+
 
 
   # PARAMETERS -----------------------------------------------------------------
@@ -63,27 +54,19 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
   PJ2EJ <- 1e-3   #nolint
 
 
-  # nolint start
   # Variable Mappings
   reval <- switch(shareOf,
-    enduse = c(
-      `Buildings|Buildings - Total final energy consumption by end-use|Space heating` = "space_heating",
-      `Buildings|Buildings - Total final energy consumption by end-use|Water heating` = "water_heating",
-      `Buildings|Buildings - Total final energy consumption by end-use|Space cooling` = "space_cooling",
-      `Buildings|Buildings - Total final energy consumption by end-use|Lighting` = "lighting",
-      `Buildings|Buildings - Total final energy consumption by end-use|Appliances and miscellaneous equipments`
-          = "appliances",
-      `Buildings|Buildings - Total final energy consumption by end-use|Cooking` = "cooking"),
+    enduse = toolGetMapping(name = "enduseMap_IEA-ETP.csv",
+                            type = "sectoral",
+                            where = "mredgebuildings") %>%
+      pull("EDGE", "IEA_ETP"),
 
-    carrier = c(
-      `Buildings|Buildings - Total final energy consumption|Coal` = "coal",
-      `Buildings|Buildings - Total final energy consumption|Oil products` = "petrol",
-      `Buildings|Buildings - Total final energy consumption|Natural gas` = "natgas",
-      `Buildings|Buildings - Total final energy consumption|Commercial heat` = "heat",
-      `Buildings|Buildings - Total final energy consumption|Electricity` = "elec",
-      `Buildings|Buildings - Total final energy consumption|Biomass, waste and other renewables` = "biomod")
+    carrier = toolGetMapping(name = "carrierMap_IEA-ETP.csv",
+                             type = "sectoral",
+                             where = "mredgebuildings") %>%
+      pull("EDGE", "IEA_ETP")
   )
-  # nolint end
+
 
 
   # PROCESS DATA ---------------------------------------------------------------
@@ -125,7 +108,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
       group_by(across(all_of(shareOf))) %>%
       summarise(value = sum(.data[["value"]]), .groups = "drop") %>%
       ungroup() %>%
-      calcShares(shareOf) %>%
+      toolCalcShares(shareOf) %>%
       mutate(value = replace_na(.data[["value"]], 0))
 
 
@@ -135,7 +118,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
       group_by(across(all_of(c("region", "period", shareOf)))) %>%
       summarise(value = sum(.data[["value"]]), .groups = "drop") %>%
       ungroup() %>%
-      calcShares(tail(shareOf, 1)) %>%
+      toolCalcShares(tail(shareOf, 1)) %>%
       mutate(value = replace_na(.data[["value"]], 0)) %>%
       complete(!!!syms(c("region", "period", shareOf))) %>%
       left_join(shareGlobal, by = shareOf) %>%
@@ -144,7 +127,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
                             .data[["value.x"]]),
              value = replace_na(.data[["value"]], 0)) %>%
       select(-"value.x", -"value.y") %>%
-      calcShares(tail(shareOf, 1))
+      toolCalcShares(tail(shareOf, 1))
 
 
     # Weights: Regional Share of FE
@@ -239,4 +222,3 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
               max = 1,
               description = "Share of carrier or end use in buildings demand"))
 }
-
