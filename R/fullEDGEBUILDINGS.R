@@ -25,6 +25,9 @@ fullEDGEBUILDINGS <- function(rev = 0) {
   calcOutput("Surface",        file = "f_surface.cs4r")
   calcOutput("Urban",          file = "f_urban.cs4r")
 
+  # climate data ---------------------------------------------------------------
+  calcOutput("HDDCDD", fromSource = TRUE, file = "f_hddcdd.cs4r")
+
   # energy ---------------------------------------------------------------------
   # move calcIO to mrcommons
   calcOutput("IOEdgeBuildings", subtype = "output_EDGE_buildings", file = "f_edge_buildings.cs4r")
