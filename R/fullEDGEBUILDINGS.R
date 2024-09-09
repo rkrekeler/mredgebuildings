@@ -40,4 +40,5 @@ fullEDGEBUILDINGS <- function(rev = 0) {
   calcOutput("Uvalues", subtype = "EUBuildingsObservatory", aggregate = FALSE,  file = "f_uvalues_rescom.cs4r")
   calcOutput("Uvalues", subtype = "ETSAP", aggregate = FALSE,                   file = "f_uvalues_etsap.cs4r")
 
+  calcOutput("EfficiencyRegression", aggregate = FALSE,            file = "f_feue_efficiencyPars.cs4r")
 }
