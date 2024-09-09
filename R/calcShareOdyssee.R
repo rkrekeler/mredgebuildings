@@ -21,7 +21,7 @@
 #' @importFrom madrat readSource toolCountryFill
 #' @importFrom quitte as.quitte revalue.levels
 #' @importFrom dplyr filter %>% mutate group_by across all_of left_join
-#' summarise .data syms
+#' summarise .data syms bind_rows pull
 #' @importFrom tidyr separate replace_na complete
 #' @importFrom utils tail
 #' @export
@@ -81,7 +81,7 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
     filter(.data[["variable"]] %in% paste0(vars, "_EJ"),
            !is.na(.data[["value"]])) %>%
     mutate(region = droplevels(.data[["region"]]),
-           variable = gsub("_.*$", "", .data[["variable"]])) %>%
+           variable = sub("_.*$", "", .data[["variable"]])) %>%
     separate("variable", c("carrier", "sector", "enduse"), c(3, 8)) %>%
     revalue.levels(carrier = carrierMap,
                    sector  = sectorMap,
@@ -110,42 +110,37 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
       filter(.data[["enduse"]] %in% c("lighting", "appliances"),
              !is.na(.data[["value"]])) %>%
       group_by(across(all_of(c("period", "sector", "carrier", "enduse")))) %>%
-      mutate(value = sum(.data[["value"]], na.rm = TRUE)) %>%
-      ungroup() %>%
+      summarise(value = sum(.data[["value"]], na.rm = TRUE), .groups = "drop") %>%
       group_by(across(all_of(c("period", "sector", "carrier")))) %>%
-      mutate(value = proportions(.data[["value"]])) %>%
+      mutate(share = proportions(.data[["value"]])) %>%
       ungroup() %>%
-      group_by(across(all_of(c("period", "sector", "enduse")))) %>%
-      mutate(share = mean(.data[["value"]])) %>%
-      ungroup() %>%
-      select(all_of(c("period", "carrier", "sector", "enduse", "share"))) %>%
-      unique()
+      select(-"value")
 
     # split existing aggregated data into "appliances" and "lighting"
     applightData <- odysseeData %>%
       filter(.data[["variable"]] %in% paste0(vars, "_EJ"),
              !is.na(.data[["value"]])) %>%
       mutate(region = droplevels(.data[["region"]]),
-             variable = gsub("_.*$", "", .data[["variable"]])) %>%
+             variable = sub("_.*$", "", .data[["variable"]])) %>%
       separate("variable", c("carrier", "sector", "enduse"), c(3, 8)) %>%
       revalue.levels(carrier = carrierMap,
                      sector  = sectorMap,
                      enduse  = enduseMap) %>%
       interpolate_missing_periods(expand.values = TRUE) %>%
-      pivot_wider(names_from = "enduse", values_from = "value") %>%
-      left_join(meanApplightShares,
+      filter(.data[["enduse"]] == "appliances_light") %>%
+      select(-"enduse") %>%
+      inner_join(meanApplightShares,
                 by = c("period", "carrier", "sector"),
                 relationship = "many-to-many") %>%
-      mutate(value = .data[["appliances_light"]] * .data[["share"]]) %>%
-      select(all_of(c("region", "period", "carrier", "enduse", "sector", "value"))) %>%
-      unique()
+      mutate(value = .data[["value"]] * .data[["share"]]) %>%
+      select("region", "period", "carrier", "enduse", "sector", "value")
 
     # replace missing values
-    odyssee <- rbind(odyssee,
-                     applightData %>%
-                       anti_join(odyssee,
-                                 by = c("region", "period", "carrier", "enduse", "sector")) %>%
-                       select(-"variable"))
+    odyssee <- applightData %>%
+      anti_join(odyssee,
+                by = c("region", "period", "carrier", "enduse", "sector")) %>%
+      bind_rows(odyssee)
+
   }
 
   if (feOnly) {
@@ -194,7 +189,7 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
 
 
 
-    # OUTPUT ---------------------------------------------------------------------
+    # OUTPUT -------------------------------------------------------------------
 
     # Convert to magpie object
     share <- share %>%
