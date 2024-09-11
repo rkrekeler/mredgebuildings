@@ -1,5 +1,6 @@
 #' Convert TCEP data base
 #'
+#' @param subtype character, type of data
 #' @param x MAgPIE object with data from TCEP #nolint
 #'
 #' @returns magpie object
@@ -14,7 +15,11 @@
 #' @importFrom madrat toolGetMapping calcOutput
 #' @export
 
-convertTCEP <- function(x) {
+convertTCEP <- function(x, subtype) {
+
+  if (subtype != "enduse") {
+    stop("No conversion for this subtype: ", subtype)
+  }
 
   # READ-IN DATA ---------------------------------------------------------------
 
