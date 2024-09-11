@@ -9,7 +9,7 @@
 
 usd2eur <- function(year = 2020) {
   GDPuc:::wb_wdi %>% # nolint: undesirable_operator_linter.
-    filter(.data[["year"]] == year, .data[["iso3c"]] == "DEU") %>%
+    filter(.data[["year"]] == !!year, .data[["iso3c"]] == "DEU") %>%
     getElement("MER (LCU per US$)") %>%
     mean()
 }
