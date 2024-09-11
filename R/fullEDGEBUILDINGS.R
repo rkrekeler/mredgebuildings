@@ -33,8 +33,8 @@ fullEDGEBUILDINGS <- function(rev = 0) {
   calcOutput("FEUE",                                               file = "f_feue.cs4r")
   calcOutput("FEUEefficiencies",                                   file = "f_feue_efficiencies.cs4r")
 
-  calcOutput("IEAfloorspace",                                      file = "f_iea_floorspace.cs4r")
-  calcOutput("Uvalues", subtype = "EUBuildingsObservatory",        file = "f_uvalues_rescom.cs4r")
-  calcOutput("Uvalues", subtype = "ETSAP",                         file = "f_uvalues_etsap.cs4r")
+  calcOutput("IEAfloorspace", aggregate = FALSE,                                file = "f_iea_floorspace.cs4r")
+  calcOutput("Uvalues", subtype = "EUBuildingsObservatory", aggregate = FALSE,  file = "f_uvalues_rescom.cs4r")
+  calcOutput("Uvalues", subtype = "ETSAP", aggregate = FALSE,                   file = "f_uvalues_etsap.cs4r")
 
 }
