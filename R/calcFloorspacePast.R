@@ -92,7 +92,7 @@ calcFloorspacePast <- function() {
       mutate(pred = .data[["pred"]] * replace_na(.data[["factor"]], 1)) %>%
 
       # fill missing values w/ predictions
-      mutate(value = .data[["pred"]] * replace_na(.data[["value"]], 1)) %>%
+      mutate(value = ifelse(is.na(.data[["value"]]), .data[["pred"]], .data[["value"]])) %>%
 
       # select columns
       select("region", "period", "variable", "unit", "demographic", "value")
