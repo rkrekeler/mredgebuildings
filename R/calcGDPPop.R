@@ -23,8 +23,8 @@ calcGDPPop <- function() {
   gdpPop <- gdp %>%
     select(-"unit", -"model", -"variable", -"scenario") %>%
     inner_join(pop %>%
-                select(-"unit", -"model", -"variable", -"scenario"),
-              by = c("region", "period")) %>%
+                 select(-"unit", -"model", -"variable", -"scenario"),
+               by = c("region", "period")) %>%
     mutate(value = .data[["value.x"]] / .data[["value.y"]],
            variable = "gdppop in constant 2005 Int$PPP") %>%
     select(-"value.x", -"value.y")

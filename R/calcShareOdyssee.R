@@ -130,8 +130,8 @@ calcShareOdyssee <- function(subtype = c("enduse", "carrier", "enduse_carrier"),
       filter(.data[["enduse"]] == "appliances_light") %>%
       select(-"enduse") %>%
       inner_join(meanApplightShares,
-                by = c("period", "carrier", "sector"),
-                relationship = "many-to-many") %>%
+                 by = c("period", "carrier", "sector"),
+                 relationship = "many-to-many") %>%
       mutate(value = .data[["value"]] * .data[["share"]]) %>%
       select("region", "period", "carrier", "enduse", "sector", "value")
 
