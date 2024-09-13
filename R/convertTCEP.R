@@ -1,5 +1,6 @@
 #' Convert TCEP data base
 #'
+#' @param subtype character, type of data
 #' @param x MAgPIE object with data from TCEP #nolint
 #'
 #' @returns magpie object
@@ -14,7 +15,11 @@
 #' @importFrom madrat toolGetMapping calcOutput
 #' @export
 
-convertTCEP <- function(x) {
+convertTCEP <- function(x, subtype) {
+
+  if (subtype != "enduse") {
+    stop("No conversion for this subtype: ", subtype)
+  }
 
   # READ-IN DATA ---------------------------------------------------------------
 
@@ -22,11 +27,7 @@ convertTCEP <- function(x) {
 
 
   # Enduse Mapping
-  # AL didn't map Middle East & Africa. Instead he mapped IND & other dev. Asia
-  # to both MIE and AFR.
-  # RH: I now map Middle East & Africa to MIE and AFR
-  # TODO: check this mapping #nolint
-  tcepMap <- toolGetMapping("regionmappingTCEP2.csv",
+  tcepMap <- toolGetMapping("regionmappingTCEP.csv",
                             type = "regional",
                             where = "mredgebuildings")
 

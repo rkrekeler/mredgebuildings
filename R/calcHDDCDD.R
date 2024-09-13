@@ -9,6 +9,8 @@
 #' @param multiscen boolean, does \code{mappingFile} cover more than one scenario?
 #' @param rasDir absolute path to directory for saving raster files
 #' @param cacheDir absolute path to directory for pre-calculated BAIT regression parameters
+#' @param fromSource logical, if TRUE, read the previously calculated data that
+#'   is temporarily saved as a source
 #'
 #' @return magpie object of heating and cooling degree days
 #'
@@ -26,7 +28,23 @@ calcHDDCDD <- function(mappingFile,
                        bait = FALSE,
                        multiscen = FALSE,
                        rasDir = NULL,
-                       cacheDir = NULL) {
+                       cacheDir = NULL,
+                       fromSource = FALSE) {
+
+  if (isTRUE(fromSource)) {
+    # Read previously calculated data from source
+    hddcdd <- readSource("HDDCDDtemp")
+
+    weight <- hddcdd
+    weight[] <- 1
+
+    return(list(x = hddcdd,
+                min = 0,
+                weight = weight,
+                unit = "K.d/yr",
+                description = "Heating and cooling degree days"))
+  }
+
 
   # initialize full calculation
   makeCalculations <- function(f, m, n, tLim, countries, pop, hddcddFactor,

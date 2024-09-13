@@ -9,7 +9,8 @@ calcGDPPop <- function() {
 
   # LOAD DATA ------------------------------------------------------------------
 
-  gdp <- calcOutput("GDPPast", aggregate = FALSE, average2020 = FALSE) %>%
+  gdp <- calcOutput("GDP", aggregate = FALSE, average2020 = FALSE) %>%
+    mselect(variable = "gdp_SSP2") %>%
     as.quitte()
 
   pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
@@ -21,9 +22,9 @@ calcGDPPop <- function() {
   # Join and Calculate
   gdpPop <- gdp %>%
     select(-"unit", -"model", -"variable", -"scenario") %>%
-    left_join(pop %>%
-                select(-"unit", -"model", -"variable", -"scenario"),
-              by = c("region", "period")) %>%
+    inner_join(pop %>%
+                 select(-"unit", -"model", -"variable", -"scenario"),
+               by = c("region", "period")) %>%
     mutate(value = .data[["value.x"]] / .data[["value.y"]],
            variable = "gdppop in constant 2005 Int$PPP") %>%
     select(-"value.x", -"value.y")

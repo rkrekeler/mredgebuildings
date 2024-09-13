@@ -92,7 +92,7 @@ calcFloorspacePast <- function() {
       mutate(pred = .data[["pred"]] * replace_na(.data[["factor"]], 1)) %>%
 
       # fill missing values w/ predictions
-      mutate(value = .data[["pred"]] * replace_na(.data[["value"]], 1)) %>%
+      mutate(value = ifelse(is.na(.data[["value"]]), .data[["pred"]], .data[["value"]])) %>%
 
       # select columns
       select("region", "period", "variable", "unit", "demographic", "value")
@@ -128,12 +128,11 @@ calcFloorspacePast <- function() {
            unit = "million m2")
 
   # IEA data: take only India
-  ind <- readSource("IEAfloorspace", convert = FALSE) %>%
+  ind <- readSource("TCEP", subtype = "floorspace", convert = FALSE) %>%
     as.quitte() %>%
     filter(.data[["region"]] == "India",
            .data[["period"]] %in% c(2000, 2011),
-           .data[["subsector"]] == "Residential") %>%
-    select(-"subsector") %>%
+           .data[["variable"]] == "Residential") %>%
     mutate(variable = "floor space",
            value = .data[["value"]] * 1000, # billion m2 -> million m2
            unit = "million m2",

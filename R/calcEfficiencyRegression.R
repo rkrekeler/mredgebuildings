@@ -60,7 +60,7 @@ calcEfficiencyRegression <- function() {
     as.quitte()
 
   # Get Mapping (ISO<->PFU)
-  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type = "regional", where = "mredegebuildings")
+  regionmapping <- toolGetMapping("pfu_regionmapping.csv", type = "regional", where = "mredgebuildings")
 
   # Get Population Data
   pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
@@ -169,7 +169,7 @@ calcEfficiencyRegression <- function() {
 
 
   return(list(x = parsFull,
-              weight = NA,
+              isocountries = FALSE,
               description = "Regression Parameter for FE-UE-Efficiency Projection",
               unit = ""))
 }
