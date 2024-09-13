@@ -128,12 +128,11 @@ calcFloorspacePast <- function() {
            unit = "million m2")
 
   # IEA data: take only India
-  ind <- readSource("IEAfloorspace", convert = FALSE) %>%
+  ind <- readSource("TCEP", subtype = "floorspace", convert = FALSE) %>%
     as.quitte() %>%
     filter(.data[["region"]] == "India",
            .data[["period"]] %in% c(2000, 2011),
-           .data[["subsector"]] == "Residential") %>%
-    select(-"subsector") %>%
+           .data[["variable"]] == "Residential") %>%
     mutate(variable = "floor space",
            value = .data[["value"]] * 1000, # billion m2 -> million m2
            unit = "million m2",
