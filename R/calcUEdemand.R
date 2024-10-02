@@ -18,7 +18,8 @@ calcUEdemand <- function() {
     select("vin", "vinHotmaps")
 
   # map Hotmaps building types
-  typMap <- getBrickMapping("buildingType.csv") %>%
+  typMap <- toolGetMapping("buildingTypeMapping_Hotmaps.csv", "sectoral",
+                           "mredgebuildings") %>%
     select("typ", "typHotmaps")
 
   # Useful energy demand for space heating (kWh/yr/m2)

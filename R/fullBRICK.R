@@ -34,6 +34,8 @@ fullBRICK <- function(rev = 0) {
   calcOutput("UEdemand",                              file = "f_ueDemand.cs4r")
   calcOutput("HeatingSystem", subtype = "Efficiency", file = "f_heatingEfficiency.cs4r")
 
+  calcOutput("RenDepth", aggregate = FALSE,           file = "f_renovationDepth.cs4r")
+
 
 
   # Life time ------------------------------------------------------------------
