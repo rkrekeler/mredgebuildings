@@ -6,8 +6,12 @@
 #' @importFrom madrat readSource
 #' @export
 
-calcTCEP <- function(subtype) {
-  return(list(x = readSource("TCEP", subtype, convert = FALSE),
+calcTCEP <- function(subtype = "enduse") {
+  x <- switch(subtype,
+    enduse = readSource("TCEP", "enduse", convert = FALSE),
+    floorspace = readSource("TCEP", "floorspace", convert = FALSE)
+  )
+  return(list(x = x,
               min = 0,
               isocountries = FALSE,
               unit = "m2/cap",

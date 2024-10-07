@@ -12,7 +12,7 @@
 #' @export
 
 
-readTCEP <- function(subtype) {
+readTCEP <- function(subtype = "enduse") {
 
   file <- switch(subtype,
     floorspace = "TCEP2014_figure_01_41_modified.xlsx",
