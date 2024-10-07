@@ -134,11 +134,11 @@ calcFEbyEUEC <- function() {
   # existing disaggregated data replaces values from optimization
   data <- ieaIODis %>%
     left_join(dataReplaceFull, by = c("region", "period", "carrier", "enduse")) %>%
-    group_by(across(all_of(c("region", "period", "carrier")))) %>%
     mutate(valueUncorrected = ifelse(is.na(.data[["replaceValue"]]),
                                      .data[["value"]],
-                                     .data[["replaceValue"]]),
-           value = .data[["valueUncorrected"]] * .data[["value"]] / sum(.data[["value"]])) %>%
+                                     .data[["replaceValue"]])) %>%
+    group_by(across(all_of(c("region", "period", "carrier")))) %>%
+    mutate(value = sum(.data[["value"]]) * proportions(.data[["valueUncorrected"]])) %>%
     select(-"valueUncorrected") %>%
     select("region", "period", "unit", "carrier", "enduse", "value")
 
