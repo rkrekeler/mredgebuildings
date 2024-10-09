@@ -41,7 +41,7 @@ steps (e.g. toolDisaggregate) where EC shares are not necessarily used.
 Hence, this case is by default disabled.
 
 In the thermal case, the enduse "appliances" is transformed to "refrigerators"
-using the region-specific refrigerator share used in EDGE-B. Higher-resoluted
+using the region-specific refrigerator share used in EDGE-B. Higher resolved
 data was not available.
 }
 \note{

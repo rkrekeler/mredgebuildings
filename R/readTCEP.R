@@ -5,10 +5,11 @@
 #'
 #' @author Hagen Tockhorn, Robin Hasse
 #'
-#' @importFrom dplyr %>% all_of
+#' @importFrom dplyr %>% all_of mutate
 #' @importFrom tidyr pivot_longer
 #' @importFrom magclass as.magpie
 #' @importFrom readxl read_xlsx
+#' @importFrom quitte as.quitte
 #' @export
 
 
@@ -22,7 +23,9 @@ readTCEP <- function(subtype = "enduse") {
 
   data <- read_xlsx(file) %>%
     pivot_longer(-all_of(c("region", "period")), names_to = "variable") %>%
-    as.magpie(spatial = "region")
+    mutate(unit = switch(subtype, enduse = "EJ", floorspace = "Billion m2")) %>%
+    as.quitte() %>%
+    as.magpie()
 
   return(data)
 }

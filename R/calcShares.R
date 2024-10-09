@@ -18,7 +18,7 @@
 #' Hence, this case is by default disabled.
 #'
 #' In the thermal case, the enduse "appliances" is transformed to "refrigerators"
-#' using the region-specific refrigerator share used in EDGE-B. Higher-resoluted
+#' using the region-specific refrigerator share used in EDGE-B. Higher resolved
 #' data was not available.
 #'
 #' @param subtype specifies share
@@ -37,14 +37,13 @@
 #'
 #' @author Hagen Tockhorn, Robin Hasse
 #'
-#' @importFrom dplyr mutate as_tibble filter select rename group_by across
-#'   all_of ungroup %>% .data left_join reframe group_modify cross_join .data
+#' @importFrom dplyr mutate as_tibble filter select rename group_by across lead
+#'   all_of ungroup %>% .data left_join reframe cross_join .data
 #' @importFrom tidyr replace_na unite complete
 #' @importFrom madrat toolGetMapping calcOutput readSource toolCountryFill
-#' @importFrom magclass time_interpolate as.magpie
-#' @importFrom quitte inline.data.frame as.quitte factor.data.frame
-#'   interpolate_missing_periods
-
+#' @importFrom magclass time_interpolate as.magpie dimSums getItems
+#' @importFrom quitte  as.quitte interpolate_missing_periods
+#' @export
 
 calcShares <- function(subtype = c("carrier_nonthermal",
                                    "carrier_thermal",
@@ -85,7 +84,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
     as.quitte()
 
   # WEO
-  sharesWEO <- readSource("WEO", subtype = "Buildings") %>%
+  sharesWEO <- calcOutput("ShareWEO", aggregate = FALSE) %>%
     as.quitte()
 
   if (shareOf == "enduse") {
@@ -104,7 +103,7 @@ calcShares <- function(subtype = c("carrier_nonthermal",
 
   if (shareOf == "enduse") {
     # TCEP
-    dataTCEP <- readSource("TCEP") %>%
+    feTCEP <- readSource("TCEP") %>%
       as.quitte()
   }
 
@@ -153,6 +152,29 @@ calcShares <- function(subtype = c("carrier_nonthermal",
       ungroup()
   }
 
+  getGrowth <- function(df, regmap, regionAgg = "EEAReg") {
+    regmap <- regmap %>%
+      select(region = "CountryCode", regionAgg = !!regionAgg)
+    df %>%
+      left_join(regmap, by = "region") %>%
+      select("region", "period", "enduse", "regionAgg", "value") %>%
+      group_by(across(all_of(c("regionAgg", "enduse", "period")))) %>%
+      reframe(value = sum(.data[["value"]], na.rm = TRUE)) %>%
+      group_by(across(all_of(c("regionAgg", "enduse")))) %>%
+      reframe(growth = (lead(.data[["value"]]) /
+                          .data[["value"]])^(1 / c(diff(.data[["period"]]), NA))) %>%
+      filter(!is.na(.data[["growth"]])) %>%
+      left_join(regmap, by = "regionAgg", relationship = "many-to-many") %>%
+      select(-"regionAgg")
+  }
+
+  extrapolateGrowth <- function(df, growth, periods = 1990:2020) {
+    df %>%
+      left_join(growth, by = c("region", "enduse")) %>%
+      group_by(across(all_of(c("region", "enduse")))) %>%
+      reframe(value = .data[["value"]] * .data[["growth"]]^(periods - .data[["period"]]),
+              period = periods)
+  }
 
 
   # PROCESS DATA ---------------------------------------------------------------
@@ -191,56 +213,9 @@ calcShares <- function(subtype = c("carrier_nonthermal",
 
     if (isFALSE(feOnly)) {
       # Extrapolate ETP FE Data
-      evolutionFactor <- sharesTCEP %>%
-        left_join(regmappingETP %>%
-                    select("CountryCode", "EEAReg") %>%
-                    rename(region = "CountryCode",
-                           regionAgg = "EEAReg"),
-                  by = "region") %>%
-        select("region", "period", "enduse", "regionAgg", "value") %>%
-        group_by(across(all_of(c("regionAgg", "enduse", "period")))) %>%
-        reframe(value = sum(.data[["value"]], na.rm = TRUE)) %>%
-        group_by(across(all_of(c("regionAgg", "enduse")))) %>%
-        reframe(factor = .data[["value"]] / dplyr::lead(.data[["value"]])) %>%
-        filter(!is.na(.data[["factor"]])) %>%
-        left_join(regmappingETP %>%
-                    select("CountryCode", "EEAReg") %>%
-                    rename(region = "CountryCode",
-                           regionAgg = "EEAReg"),
-                  by = "regionAgg", relationship = "many-to-many") %>%
-        select(-"regionAgg")
-
-
-      sharesStart <- shares %>%
-        left_join(evolutionFactor, by = c("region", "enduse")) %>%
-        mutate(value = .data[["value"]] * .data[["factor"]],
-               period = 2000) %>%
-        select(-"factor") %>%
-        filter(!is.na(.data[["value"]]))
-
-
-      sharesFull <- rbind(sharesStart,
-                          shares %>%
-                            filter(!is.na(.data[["value"]])))
-
-
-      sharesFull <- sharesFull %>%
-        factor.data.frame() %>%
-        as.quitte() %>%
-        interpolate_missing_periods(period = seq(1990, 2020)) %>%
-        group_by(across(all_of(c("region", "enduse")))) %>%
-        group_modify(~ extrapolateMissingPeriods(.x, key = "value")) %>%
-        ungroup() %>%
-        select("region", "period", "enduse", "value")
-
-
-      # NOTE: The linear regression might lead to negative values which will be
-      # filled up with zeros and then re-normalized.
-      # (However, this is a very practical fix...)
-
-      sharesFull <- sharesFull %>%
-        mutate(value = ifelse(.data[["value"]] < 0, 1e-6, .data[["value"]]))
-
+      evolutionFactor <- getGrowth(sharesTCEP, regmappingETP)
+      sharesFull <- extrapolateGrowth(shares, evolutionFactor) %>%
+        normalize(shareOf)
 
       # Merge Data
       data <- sharesOdyssee %>%
@@ -256,60 +231,13 @@ calcShares <- function(subtype = c("carrier_nonthermal",
     # Calculate FE Data
 
     # Extrapolate ETP FE Data
-    evolutionFactor <- dataTCEP %>%
-      left_join(regmappingETP %>%
-                  select("CountryCode", "EEAReg") %>%
-                  rename(region = "CountryCode",
-                         regionAgg = "EEAReg"),
-                by = "region") %>%
-      group_by(across(all_of(c("regionAgg", "enduse", "period")))) %>%
-      reframe(value = sum(.data[["value"]], na.rm = TRUE)) %>%
-      group_by(across(all_of(c("regionAgg", "enduse")))) %>%
-      reframe(factor = .data[["value"]] / dplyr::lead(.data[["value"]])) %>%
-      filter(!is.na(.data[["factor"]])) %>%
-      left_join(regmappingETP %>%
-                  select("CountryCode", "EEAReg") %>%
-                  rename(region = "CountryCode",
-                         regionAgg = "EEAReg"),
-                by = "regionAgg") %>%
-      select(-"regionAgg")
-
-
-    dataETPstart <- feETP %>%
-      left_join(evolutionFactor, by = c("region", "enduse")) %>%
-      mutate(value = .data[["value"]] * .data[["factor"]],
-             period = 2000) %>%
-      select(-"factor") %>%
-      filter(!is.na(.data[["value"]]))
-
-
-    dataETPfull <- rbind(dataETPstart,
-                         feETP %>%
-                           filter(!is.na(.data[["value"]])))
-
-
-    dataETPfull <- dataETPfull %>%
-      select(-"unit") %>%
-      quitte::factor.data.frame() %>%
-      as.quitte() %>%
-      interpolate_missing_periods(period = seq(1990, 2020)) %>%
-      group_by(across(all_of(c("region", "enduse")))) %>%
-      group_modify(~ extrapolateMissingPeriods(.x, key = "value")) %>%
-      ungroup() %>%
-      select("region", "period", "enduse", "value")
-
-
-    # NOTE: The linear regression might lead to negative values which will be
-    # filled up with small values and then re-normalized.
-    # (However, this is a very practical fix...)
-
-    dataETPfull <- dataETPfull %>%
-      mutate(value = ifelse(.data[["value"]] < 0, 1e-6, .data[["value"]]))
+    evolutionFactor <- getGrowth(feTCEP, regmappingETP)
+    feETPfull <- extrapolateGrowth(feETP, evolutionFactor)
 
     if (feOnly) {
-      data  <- dataETPfull
+      data  <- feETPfull
     } else {
-      regFE <- dataETPfull %>%
+      regFE <- feETPfull %>%
         mutate(value = replace_na(.data[["value"]], 0))
     }
   }
@@ -442,13 +370,12 @@ calcShares <- function(subtype = c("carrier_nonthermal",
 
     description <- "Final energy demand of carrier or end use in buildings"
   } else {
-    regFE <- regFE %>%
+    weight <- regFE %>%
+      as.quitte() %>%
       as.magpie() %>%
-      collapseDim() %>%
+      dimSums() %>%
       time_interpolate(getItems(data, 2)) %>%
       toolCountryFill(1, verbosity = 2)
-
-    weight <- regFE
     unit   <- "1"
     max    <- 1
 
