@@ -19,7 +19,7 @@ convertEHI <- function(x) {
   }))
 
   # split aggregated regions
-  weight <- feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
+  weight <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
     dimSums("typ") %>%
     time_interpolate(getItems(x, 2), extrapolation_type = "constant")
 

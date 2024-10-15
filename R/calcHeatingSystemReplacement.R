@@ -34,8 +34,9 @@ calcHeatingSystemReplacement <- function() {
 
   # replace boiler to boiler replacement by more detailed breakdown
   replaceMatrix <- mbind(
-    (replaceMatrix[["allHeating"]])[, , "Boiler.Boiler", invert = TRUE],
-     replaceMatrix[["boilerToBoiler"]])
+    replaceMatrix[["allHeating"]][, , "Boiler.Boiler", invert = TRUE],
+    replaceMatrix[["boilerToBoiler"]]
+  )
 
 
 
@@ -51,7 +52,7 @@ calcHeatingSystemReplacement <- function() {
     toolAggregate(map, from = "technology", to = "technologyBRICK", dim = 3.2, partrel = TRUE)
 
   # remove zero that the aggregation introduced
-  replaceMatrix <- replaceMatrix[,, replaceMatrix > 0]
+  replaceMatrix <- replaceMatrix[, , replaceMatrix > 0]
 
   # disaggregate flows between HP and boilers to boiler technologies
   replaceMatrix <- do.call(mbind, lapply(getNames(replaceMatrix), function(n) {
@@ -73,7 +74,8 @@ calcHeatingSystemReplacement <- function() {
                   weight = replaceMatrix %>%
                     mselect(flows[dimDisagg]) %>%
                     dimSums(dimKeep))
-  })) %>% mbind(replaceMatrix[, , grep("_", getNames(replaceMatrix), value = TRUE), invert = TRUE])
+  })) %>%
+    mbind(replaceMatrix[, , grep("_", getNames(replaceMatrix), value = TRUE), invert = TRUE])
 
   # normalise back
   replaceMatrix <- proportions(replaceMatrix) %>%
@@ -86,6 +88,5 @@ calcHeatingSystemReplacement <- function() {
               min = 0,
               max = 1,
               description = "Share of respondents that replaced a heating system",
-              unit = "1"
-              ))
+              unit = "1"))
 }
