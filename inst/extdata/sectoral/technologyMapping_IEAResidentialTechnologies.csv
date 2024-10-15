@@ -1,0 +1,11 @@
+technology,technologyBRICK,weight,comment
+Air-air heat pump,ehp1,0.84,2020 market shares in EU from Hpbarometer as weights
+Air-water heat pump,ehp1,0.14,2020 market shares in EU from Hpbarometer as weights
+Ground-source heat pump,ehp1,0.02,2020 market shares in EU from Hpbarometer as weights
+Gas condensing boiler,gabo,1,
+Oil condensing boiler,libo,1,
+Pellet Stove,biom,0.1,weight guessed
+Pellet boiler (automated feed),biom,0.7,weight guessed
+Pellet boiler (manual feed),biom,0.2,weight guessed
+Solar thermal combi system,,1,
+Solar thermal water heater,,1,

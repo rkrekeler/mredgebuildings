@@ -1,0 +1,28 @@
+variableSILC;variableNameSILC;valueSILC;valueNameSILC;variableTarget;valueTarget;weight;quantileFrom;quantileTo;note;source
+HH010;Dwelling type;1;Detached house;buildingType;SFH;1;;;;
+HH010;Dwelling type;2;Semi-detached or terraced house;buildingType;SFH;1;;;;
+HH010;Dwelling type;3;Apartment or flat in a building with less than 10 dwellings;buildingType;MFH;1;;;;
+HH010;Dwelling type;4;Apartment or flat in a building with 10 or more dwellings;buildingType;MFH;1;;;;
+HH010;Dwelling type;5;Some other kind of accommodation;buildingType;MFH;1;;;;
+HH010;Dwelling type;-1;Missing;buildingType;;1;;;;
+HH021;Tenure status;1;Outright owner;tenure;owner;1;;;;
+HH021;Tenure status;2;Owner paying mortgage;tenure;owner;1;;;;
+HH021;Tenure status;3;Tenant or subtenant paying rent at prevailing or market rate;tenure;tenant;1;;;;
+HH021;Tenure status;4;Accommodation is rented at a reduced rate (lower price than the market price);tenure;tenant;1;;;;
+HH021;Tenure status;5;Accommodation is provided free;tenure;tenant;1;;;;
+HH021;Tenure status;-1;Missing;tenure;;1;;;;
+HH020;Tenure status;1;Owner;tenure;owner;1;;;replaced by HH021 since 2010;
+HH020;Tenure status;2;Tenant or subtenant paying rent at prevailing or market rate;tenure;tenant;1;;;replaced by HH021 since 2010;
+HH020;Tenure status;3;Accommodation is rented at a reduced rate (lower price that the market price);tenure;tenant;1;;;replaced by HH021 since 2010;
+HH020;Tenure status;4;accommodation is provided free;tenure;tenant;1;;;replaced by HH021 since 2010;
+HH020;Tenure status;-1;missing;tenure;;1;;;replaced by HH021 since 2010;
+HY010;Total household gross income;;;income;low;1;0;0.333333;;
+HY010;Total household gross income;;;income;medium;1;0.333333;0.666667;;
+HY010;Total household gross income;;;income;high;1;0.666667;1;;
+HY010;Total household gross income;-1;Missing (not allowed for most income component);income;;;;;;
+HY010;Total household gross income;-5;Not filled - variable of net series is filled;income;;;;;;
+DB100;Degree of urbanisation;1;Densely-populated area;location;urban;1;;;cities: >= 1500 cap/km2;https://ec.europa.eu/eurostat/ramon/miscellaneous/index.cfm?TargetUrl=DSP_DEGURBA
+DB100;Degree of urbanisation;2;Intermediate area;location;urban;0.5;;;towns and suburbs: >= 300 cap/km2;https://ec.europa.eu/eurostat/ramon/miscellaneous/index.cfm?TargetUrl=DSP_DEGURBA
+DB100;Degree of urbanisation;2;Intermediate area;location;rural;0.5;;;towns and suburbs: >= 300 cap/km2;https://ec.europa.eu/eurostat/ramon/miscellaneous/index.cfm?TargetUrl=DSP_DEGURBA
+DB100;Degree of urbanisation;3;Thinly-populated area;location;rural;1;;;rural areas;https://ec.europa.eu/eurostat/ramon/miscellaneous/index.cfm?TargetUrl=DSP_DEGURBA
+DB100;Degree of urbanisation;-1;Missing;location;;;;;;
