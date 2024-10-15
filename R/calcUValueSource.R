@@ -19,6 +19,5 @@ calcUValueSource <- function(subtype = c("EUBuildingsObservatory", "ETSAP")) {
               min = 0,
               isocountries = FALSE,
               unit = "W/m2K",
-              description = paste("U-values as reported by", subtype)
-  ))
+              description = paste("U-values as reported by", subtype)))
 }

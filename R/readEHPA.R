@@ -34,7 +34,7 @@ readEHPA <- function(subtype = "hpSales") {
     },
     hpMarketShare = {
 
-      file = "EHPA_market_report_2023_Final full report_Table3.5-1.txt"
+      file <- "EHPA_market_report_2023_Final full report_Table3.5-1.txt"
       data <- read.csv(file, sep = " ", comment.char = "#") %>%
         rename(region = "X") %>%
         pivot_longer(matches("X\\d{4}"), names_to = "period") %>%

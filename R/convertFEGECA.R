@@ -21,7 +21,7 @@ convertFEGECA <- function(x) {
 
   # translate technologies to English
   mapFEGECA <- toolGetMapping("technologyMapping_FEGECA.csv",
-                                   type = "sectoral", where = "mredgebuildings")
+                              type = "sectoral", where = "mredgebuildings")
   mapFEGECA <- stats::setNames(mapFEGECA[["variable"]],
                                mapFEGECA[["variableESP"]])
   getItems(x, 3.1) <- unname(mapFEGECA[getItems(x, 3.1)])

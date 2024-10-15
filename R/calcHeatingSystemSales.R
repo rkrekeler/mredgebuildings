@@ -41,7 +41,6 @@ calcHeatingSystemSales <- function() {
     mselect(corrected = TRUE) %>%
     .removeNADims() %>%
     .mapToBRICK(mapEHPA, from = "hpType")
-  # salesHpEurobserver <- readSource("EurObservER", subtype = "HPbarometer")
 
 
 
@@ -50,12 +49,12 @@ calcHeatingSystemSales <- function() {
   ## many European countries ====
 
   # common regions
-  reg <- Reduce(intersect,lapply(list(salesTotal, salesEff, salesHp),
-                                 getItems, dim = 1))
+  reg <- Reduce(intersect, lapply(list(salesTotal, salesEff, salesHp),
+                                  getItems, dim = 1))
 
   # all time steps
-  t <- Reduce(union,lapply(list(salesTotal, salesEff, salesHp),
-                           getItems, dim = 2))
+  t <- Reduce(union, lapply(list(salesTotal, salesEff, salesHp),
+                            getItems, dim = 2))
 
   # extrapolate to all time steps
   salesTotal <- .time_interpolate(salesTotal, t, 0.2)
@@ -68,7 +67,6 @@ calcHeatingSystemSales <- function() {
   salesMissing <- salesTotal[reg, , ] - dimSums(sales)
   salesMissing[salesMissing < 0] <- 0
   incompleteFactor <- 1 + salesMissing / dimSums(sales[, , incompleteHs])
-  incompleteFactorGlo <- 1 + dimSums(salesMissing, 1) / dimSums(sales[, , incompleteHs], c(1, 3))
   sales[, , incompleteHs] <- sales[, , incompleteHs] * incompleteFactor
 
   # add zeros for missing technologies
@@ -81,8 +79,8 @@ calcHeatingSystemSales <- function() {
 
   ### AUT ####
   mapBMK <- toolGetMapping("technologyMapping_BMK.csv",
-                            type = "sectoral",
-                            where = "mredgebuildings")
+                           type = "sectoral",
+                           where = "mredgebuildings")
   bmk <- readSource("BMK")["AUT", t] %>%
     .mapToBRICK(mapBMK, from = "technology")
   hs <- setdiff(getItems(bmk, "hs"), "sobo_biom")
@@ -102,8 +100,8 @@ calcHeatingSystemSales <- function() {
 
   ### ESP ####
   mapFEGECA <- toolGetMapping("technologyMapping_FEGECA.csv",
-                          type = "sectoral",
-                          where = "mredgebuildings") %>%
+                              type = "sectoral",
+                              where = "mredgebuildings") %>%
     filter(.data[["considerSales"]])
   # scale sum of gabo and libo to match total of boilers and add gas heaters
   fegeca <- readSource("FEGECA")["ESP", , ] %>%
@@ -171,7 +169,6 @@ calcHeatingSystemSales <- function() {
     dimSums(c("variable", "typ", "loc", "vin")) %>%
     .removeNADims("region") %>%
     .time_interpolate(t, 0.3)
-  pop <- calcOutput("PopulationPast", aggregate = FALSE)
 
   # based on dwelling numbers for all regions that have stock data
   salesExtrStock <- .predictSales(sales, stock)
@@ -183,7 +180,7 @@ calcHeatingSystemSales <- function() {
 
 
   salesExtr <- salesExtrStock
-  salesExtr[getItems(sales, 1), ,] <- sales
+  salesExtr[getItems(sales, 1), , ] <- sales
 
 
   ## District heating ====
@@ -255,16 +252,17 @@ calcHeatingSystemSales <- function() {
 
 
 .toDf <- function(x) {
-  x %>% as.quitte() %>%
+  x %>%
+    as.quitte() %>%
     removeColNa()
 }
 
 
-.time_interpolate <- function(dataset,
-                              interpolated_year,
+.time_interpolate <- function(dataset, # nolint: object_name_linter.
+                              interpolated_year, # nolint: object_name_linter.
                               wLinear = 1,
                               nonNegative = TRUE,
-                              integrate_interpolated_years = FALSE) {
+                              integrate_interpolated_years = FALSE) { # nolint: object_name_linter.
   out <- wLinear  * time_interpolate(dataset,
                                      interpolated_year,
                                      integrate_interpolated_years,
