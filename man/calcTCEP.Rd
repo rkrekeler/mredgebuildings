@@ -4,7 +4,7 @@
 \alias{calcTCEP}
 \title{IEA's Tracking clean energy progress 2014}
 \usage{
-calcTCEP(subtype)
+calcTCEP(subtype = "enduse")
 }
 \arguments{
 \item{subtype}{character, type of data}

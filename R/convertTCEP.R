@@ -15,7 +15,7 @@
 #' @importFrom madrat toolGetMapping calcOutput
 #' @export
 
-convertTCEP <- function(x, subtype) {
+convertTCEP <- function(x, subtype = "enduse") {
 
   if (subtype != "enduse") {
     stop("No conversion for this subtype: ", subtype)

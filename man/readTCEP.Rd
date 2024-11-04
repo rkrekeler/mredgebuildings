@@ -4,7 +4,7 @@
 \alias{readTCEP}
 \title{Read TCEP data base}
 \usage{
-readTCEP(subtype)
+readTCEP(subtype = "enduse")
 }
 \arguments{
 \item{subtype}{character, type of data}

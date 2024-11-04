@@ -9,7 +9,8 @@ calcGDPPop <- function() {
 
   # LOAD DATA ------------------------------------------------------------------
 
-  gdp <- calcOutput("GDP", aggregate = FALSE, average2020 = FALSE) %>%
+  gdp <- calcOutput("GDP", aggregate = FALSE, average2020 = FALSE,
+                    unit = "constant 2005 Int$PPP") %>%
     mselect(variable = "gdp_SSP2") %>%
     as.quitte()
 
