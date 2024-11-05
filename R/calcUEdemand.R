@@ -49,7 +49,7 @@ calcUEdemand <- function() {
     collapseDim()
 
   # weight: FE demand
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE) %>%
     mselect(period = "y2017", collapseNames = TRUE)
 
   return(list(x = ueDem,

@@ -1,4 +1,4 @@
-#' Calculate Matric of heating system replacement shares
+#' Calculate Matrix of heating system replacement shares
 #'
 #' @returns MagPIE object with shares
 #'

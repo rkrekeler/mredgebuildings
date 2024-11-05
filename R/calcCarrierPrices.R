@@ -194,7 +194,7 @@ calcCarrierPrices <- function() {
     as.magpie()
 
   # weight: FE demand
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE) %>%
     dimSums("typ") %>%
     time_interpolate(periods, extrapolation_type = "constant")
 

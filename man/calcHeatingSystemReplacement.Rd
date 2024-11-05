@@ -2,7 +2,7 @@
 % Please edit documentation in R/calcHeatingSystemReplacement.R
 \name{calcHeatingSystemReplacement}
 \alias{calcHeatingSystemReplacement}
-\title{Calculate Matric of heating system replacement shares}
+\title{Calculate Matrix of heating system replacement shares}
 \usage{
 calcHeatingSystemReplacement()
 }
@@ -10,7 +10,7 @@ calcHeatingSystemReplacement()
 MagPIE object with shares
 }
 \description{
-Calculate Matric of heating system replacement shares
+Calculate Matrix of heating system replacement shares
 }
 \author{
 Robin Hasse

@@ -77,7 +77,7 @@ calcCostConstruction <- function() {
     toolCountryFill(NA, verbosity = 2)
 
   # weight: FE demand
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE) %>%
     time_interpolate(getItems(constructionCost, 2),
                      extrapolation_type = "constant")
 

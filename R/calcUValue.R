@@ -37,7 +37,7 @@ calcUValue <- function() {
     toolCountryFillAvg(verbosity = 2)
 
   # weight: FE demand
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE) %>%
     mselect(period = getItems(uval, 2))
 
 

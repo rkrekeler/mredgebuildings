@@ -1,8 +1,8 @@
 #' calculate FE demand in buildings
 #'
-#' Simple estimate of total FE demand in differet building types
+#' Simple estimate of total FE demand in different building types
 #'
-#' Schould only be used as weights not actual demand. The disaggregation to
+#' Should only be used as weights not actual demand. The disaggregation to
 #' building types is too simplistic.
 #'
 #' @author Robin Hasse
@@ -14,7 +14,7 @@
 #'   setNames getItems
 #' @export
 
-calcFEdemandBuildings <- function() {
+calcWeightFeBuildings <- function() {
 
   # total FE demand in buildings subsectors
   fe <- readSource("IEA", "EnergyBalances") %>%

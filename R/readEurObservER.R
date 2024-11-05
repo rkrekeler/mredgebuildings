@@ -51,7 +51,7 @@ readEurObservER <- function(subtype) {
         wideTable <- read.csv(file, header = FALSE)
 
         if (reportPeriod == "2013") {
-          years <- switch(gsub(".*Table|.csv", "", file), `5` = 2011, `6` = 2012)
+          years <- switch(gsub(".*Table|\\.csv", "", file), `5` = 2011, `6` = 2012)
           wideTable <- wideTable[, !grepl("[rR]enewable heat", wideTable[1, ])]
         } else {
           years <- grep("\\d{4}", wideTable[1, ], value = TRUE)
@@ -107,7 +107,7 @@ readEurObservER <- function(subtype) {
         group_by(across(all_of(c("region", "period", "reportPeriod")))) %>%
         filter(abs(.data[["value"]][.data[["variable"]] == "Total"] -
                      .data[["value"]][.data[["variable"]] == "ASHP"] -
-                     .data[["value"]][.data[["variable"]] == "GSHP"]) > 1) %>%
+                     .data[["value"]][.data[["variable"]] == "GSHP"]) > 0) %>%
         select("region", "period", "reportPeriod") %>%
         unique()
       if (nrow(sumIsWrong) > 0) {

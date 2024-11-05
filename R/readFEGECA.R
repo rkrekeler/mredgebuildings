@@ -15,11 +15,11 @@
 readFEGECA <- function(subtype = NULL) {
 
   # names of files must be orderable
-  files <- c(`2015` = "2017_2018_2019.csv",
+  files <- c(`2019` = "2017_2018_2019.csv",
              `2020` = "2020.csv",
-             `2020` = "2021.csv",
-             `2020` = "2022.csv",
-             `2022` = "2023.csv")
+             `2021` = "2021.csv",
+             `2022` = "2022.csv",
+             `2023` = "2023.csv")
 
   data <- if (is.null(subtype)) {
     # consider all files and always use the most recent information
