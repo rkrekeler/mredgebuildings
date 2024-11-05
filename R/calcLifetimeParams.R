@@ -227,7 +227,7 @@ calcLifetimeParams <- function(subtype) {
   params <- toolCountryFillAvg(params, verbosity = 2, no_remove_warning = "GLO")
 
   # weight: FE demand
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE) %>%
     mselect(period = "y2020", collapseNames = TRUE)
   if ("typ" %in% getSets(params)) {
     feBuildings <- feBuildings %>%

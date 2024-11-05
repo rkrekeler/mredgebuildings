@@ -215,7 +215,7 @@ calcCostRenovation <- function(energyLadder = FALSE) {
     as.magpie(spatial = "region", temporal = "period", datacol = "value")
 
   # weight: FE demand
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE) %>%
     time_interpolate(getItems(renovationCost, 2),
                      extrapolation_type = "constant")
 

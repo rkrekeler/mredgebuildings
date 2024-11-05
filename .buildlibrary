@@ -1,4 +1,4 @@
-ValidationKey: '1480518'
+ValidationKey: '1502400'
 AutocreateReadme: yes
 AcceptedWarnings:
 - 'Warning: package ''.*'' was built under R version'
@@ -6,3 +6,4 @@ AcceptedWarnings:
 AcceptedNotes: 'Unexported object imported by a .:::. call: .GDPuc:::wb_wdi.'
 allowLinterWarnings: no
 enforceVersionUpdate: no
+skipCoverage: no

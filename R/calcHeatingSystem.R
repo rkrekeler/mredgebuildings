@@ -110,7 +110,7 @@ calcHeatingSystem <- function(subtype = c("Purchasing cost", "Efficiency")) {
   data <- toolCountryFillAvg(data, verbosity = 2)
 
   # weight: FE demand
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE) %>%
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE) %>%
     time_interpolate(getItems(data, 2), extrapolation_type = "constant")
 
   return(list(x = data,

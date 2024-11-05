@@ -72,7 +72,7 @@ calcHeatingCapacity <- function(swissFormular = FALSE) {
 
 
   # weight: FE demand
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE)[, t, ]
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE)[, t, ]
 
   return(list(x = heatCap,
               unit = "kW/m2",

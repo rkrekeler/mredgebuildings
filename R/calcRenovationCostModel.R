@@ -97,7 +97,7 @@ calcRenovationCostModel <- function() {
     pivot_wider(names_from = "variable", values_from = "value")
 
   # FE demand in residential and commercial buildings as weight
-  feBuildings <- calcOutput("FEdemandBuildings", aggregate = FALSE)[, periods, ]
+  feBuildings <- calcOutput("WeightFeBuildings", aggregate = FALSE)[, periods, ]
 
 
 
