@@ -153,7 +153,8 @@ calcFloorspacePast <- function() {
 
   # share of urban population
   urbanshare <- calcOutput("UrbanPast", aggregate = FALSE) %>%
-    as.quitte()
+    as.quitte() %>%
+    mutate(variable = "urbanPop")
 
   # population density
   dens <- calcOutput("Density", aggregate = FALSE) %>%
