@@ -18,7 +18,7 @@ Depends:
     magclass (>= 6.11.0),
     mrdrivers (>= 1.0.0),
     mrcommons (>= 1.35.0),
-    mrremind (>= 0.175.4)
+    mrremind (>= 0.199.1)
 Imports:
     brick (>= 0.5.0),
     dplyr,
