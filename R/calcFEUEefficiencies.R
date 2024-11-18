@@ -137,7 +137,10 @@ calcFEUEefficiencies <- function(gasBioEquality = TRUE) {
         mutate(variable = eqEffs[gasVar][[1]]) %>%
         separate("variable", into = c("enduse", "carrier"), sep = "\\.")
 
-      efficiencies <- rbind(efficiencies, bioEffs)
+      efficiencies <- rbind(
+        anti_join(efficiencies, bioEffs, by = c("region", "period", "enduse", "carrier", "scenario")),
+        bioEffs
+      )
     }
   }
 
