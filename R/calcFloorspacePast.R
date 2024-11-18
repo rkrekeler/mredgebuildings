@@ -139,13 +139,17 @@ calcFloorspacePast <- function() {
            region = "IND")
 
   # historic population
-  pop <- calcOutput("PopulationPast", aggregate = FALSE) %>%
+  pop <- calcOutput("Population", scenario = "SSP2", aggregate = FALSE) %>%
     as.quitte() %>%
-    mutate(unit = "million cap")
+    filter(.data[["period"]] <= endOfHistory) %>%
+    mutate(unit = "million cap",
+           variable = gsub("pop_SSP2", "population", .data[["variable"]], fixed = TRUE))
 
   # historic GDP per capita
-  gdppop <- calcOutput("GDPPast", aggregate = FALSE) %>% # nolint
+  gdppop <- calcOutput("GDP", scenario = "SSP2", average2020 = FALSE, aggregate = FALSE, unit = "constant 2005 Int$PPP") %>% # nolint
     as.quitte() %>%
+    filter(.data[["period"]] <= endOfHistory) %>%
+    mutate(variable = gsub("gdp_SSP2", "gdp in constant 2005 Int$PPP", .data[["variable"]], fixed = TRUE)) %>%
     rbind(pop) %>%
     calc_addVariable(gdppop = "`gdp in constant 2005 Int$PPP` / `population`",
                      units = "USD2005/cap", only.new = TRUE) %>%
@@ -153,7 +157,8 @@ calcFloorspacePast <- function() {
 
   # share of urban population
   urbanshare <- calcOutput("UrbanPast", aggregate = FALSE) %>%
-    as.quitte()
+    as.quitte() %>%
+    mutate(variable = "urbanPop")
 
   # population density
   dens <- calcOutput("Density", aggregate = FALSE) %>%

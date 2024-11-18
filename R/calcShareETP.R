@@ -75,18 +75,17 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
   etpFilter <- etp %>%
     as.quitte() %>%
     filter(.data[["period"]] %in% periods,
-           .data[["data"]] %in% scen) %>%
-    filter(.data[["data1"]] %in% names(reval),
+           .data[["scenario"]] %in% scen) %>%
+    filter(.data[["variable"]] %in% names(reval),
            !is.na(.data[["value"]])) %>%
-    mutate(data1 = droplevels(revalue(.data[["data1"]], reval)))
+    mutate(variable = droplevels(revalue(.data[["variable"]], reval)))
 
-  names(etpFilter)[names(etpFilter) == "data1"] <- shareOf
+  names(etpFilter)[names(etpFilter) == "variable"] <- shareOf
 
 
   # Extrapolate 'biotrad' share from 'biomod' values for carrier separation
   if (subtype == "carrier") {
     etpFilter <- etpFilter %>%
-      select(-"variable") %>%
       rename(variable = "carrier") %>%
       toolSplitBiomass(gdppop, varName = "biomod") %>%
       rename(carrier = "variable")
@@ -114,7 +113,7 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
 
     # Local Shares
     share <- etpFilter %>%
-      select(-"data", -"data2", -"unit", -"model", -"scenario") %>%
+      select(-"unit", -"model", -"scenario") %>%
       group_by(across(all_of(c("region", "period", shareOf)))) %>%
       summarise(value = sum(.data[["value"]]), .groups = "drop") %>%
       ungroup() %>%
@@ -195,7 +194,8 @@ calcShareETP <- function(subtype = c("enduse", "carrier"), feOnly = FALSE) {
       mutate(value = .data[["value"]] * PJ2EJ,
              unit = "EJ") %>%
       select("region", "period", "unit", shareOf, "value") %>%
-      as.magpie()
+      as.magpie() %>%
+      toolCountryFill(verbosity = 0)
 
     return(list(x = feData,
                 unit = "EJ/yr",
