@@ -99,7 +99,6 @@ calcShares <- function(subtype = c("carrier_nonthermal",
   # IEA ETP
   feETP <-
     calcOutput("ShareETP", subtype = shareOf, feOnly = TRUE, aggregate = FALSE) %>%
-    # toolCountryFillAvg() %>%
     as.quitte()
 
   if (shareOf == "enduse") {
