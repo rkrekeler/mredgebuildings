@@ -1024,11 +1024,17 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
     select(heating = "variable", "hs") %>%
     unique()
 
+  # building shell
+  bsMap <- toolGetMapping("buildingShell.csv", "sectoral", "brick") %>%
+    select("bs", "initShare")
+
   # remap
   stock <- stock %>%
     left_join(vinMap, by = "vintage") %>%
     left_join(hsMap, by = "heating") %>%
-    select(-"vintage", -"heating") %>%
+    cross_join(bsMap) %>%
+    mutate(value = .data[["value"]] * .data[["initShare"]]) %>%
+    select(-"vintage", -"heating", -"initShare") %>%
     rename(typ = "buildingType",
            loc = "location") %>%
     relocate("value", .after = last_col())

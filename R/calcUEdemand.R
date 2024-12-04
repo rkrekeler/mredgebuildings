@@ -37,13 +37,19 @@ calcUEdemand <- function() {
     group_by(across(-all_of(c("value")))) %>%
     summarise(value = mean(.data[["value"]]), .groups = "drop")
 
+  # scale demand such that average is maintained with differentiated efficiency
+  relDem <- bsMap %>%
+    select("bs", "relDem", "initShare") %>%
+    mutate(relDem = .data[["relDem"]] /
+             sum(.data[["initShare"]] * .data[["relDem"]])) %>%
+    select(-"initShare")
+
   # add dimension: building shell
-  relDem <- getBrickMapping("buildingShell.csv") %>%
-    select("bs", relDem)
   ueDem <- ueDem %>%
     cross_join(relDem) %>%
     mutate(value = .data[["value"]] * .data[["relDem"]]) %>%
     select(-"relDem")
+
 
   # convert to magpie object
   ueDem <- ueDem %>%
