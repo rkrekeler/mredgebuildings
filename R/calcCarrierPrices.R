@@ -11,6 +11,7 @@
 #'   summarise left_join full_join cross_join rename
 #' @importFrom tidyr pivot_longer complete
 #' @importFrom quitte as.quitte inline.data.frame interpolate_missing_periods
+#' @importFrom madrat toolGetMapping
 #' @export
 
 calcCarrierPrices <- function() {
@@ -182,7 +183,9 @@ calcCarrierPrices <- function() {
   data <- rbind(prices, emi)
 
   # all carriers included?
-  carrier <- unique(getBrickMapping("heatingSystem.csv")["carrier"])
+  carrier <- toolGetMapping("heatingSystem.csv", "sectoral", "brick") %>%
+    select("carrier") %>%
+    unique()
   data <- data %>%
     right_join(carrier, by = "carrier")
   if (any(is.na(data))) {

@@ -7,7 +7,6 @@
 #' @importFrom dplyr select right_join group_by across all_of summarise mutate
 #'   cross_join
 #' @importFrom quitte as.quitte
-#' @importFrom brick getBrickMapping
 #' @export
 
 calcUEdemand <- function() {
@@ -21,6 +20,9 @@ calcUEdemand <- function() {
   typMap <- toolGetMapping("buildingTypeMapping_Hotmaps.csv", "sectoral",
                            "mredgebuildings") %>%
     select("typ", "typHotmaps")
+
+  # building shell map
+  bsMap <- toolGetMapping("buildingShell.csv", "sectoral", "brick")
 
   # Useful energy demand for space heating (kWh/yr/m2)
   ueDem <- readSource("Hotmaps") %>%
