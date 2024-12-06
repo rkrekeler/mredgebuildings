@@ -27,7 +27,8 @@ calcCostRenovation <- function(energyLadder = FALSE) {
   # quadratically increasing factor to increase shell cost for old buildings
   vinFactorMax <- 1.5
   vinFactorStart <- 2020
-  vinFactor <- toolGetMapping("vintage.csv", "sectoral", "brick") %>%
+  vinFactor <- toolGetMapping("vintage.csv",
+                              type = "sectoral", where = "brick") %>%
     mutate(avgYear = (.data[["from"]] + .data[["to"]]) / 2,
            factor = ifelse(.data[["avgYear"]] < vinFactorStart,
                            (vinFactorStart - .data[["avgYear"]]) ^ 2,
@@ -49,7 +50,8 @@ calcCostRenovation <- function(energyLadder = FALSE) {
   ## Building shell ====
 
   ### relative demand ####
-  relDem <- toolGetMapping("buildingShell.csv", "sectoral", "brick") %>%
+  relDem <- toolGetMapping("buildingShell.csv",
+                           type = "sectoral", where = "brick") %>%
     select("bs", "relDem") %>%
     unique()
 
@@ -102,7 +104,8 @@ calcCostRenovation <- function(energyLadder = FALSE) {
   ### renovation transitions ####
 
   # heating systems hierarchy
-  heatingLadder <- toolGetMapping("heatingSystem.csv", "sectoral", "brick") %>%
+  heatingLadder <- toolGetMapping("heatingSystem.csv",
+                                  type = "sectoral", where = "brick") %>%
     select("hs", ladder = "energyLadder")
 
   # heating system states

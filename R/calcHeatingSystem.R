@@ -22,7 +22,8 @@ calcHeatingSystem <- function(subtype = c("Purchasing cost", "Efficiency")) {
   subtype <- match.arg(subtype)
 
   # all heating technologies
-  hsMap <- toolGetMapping("heatingSystem.csv", "sectoral", "brick")
+  hsMap <- toolGetMapping("heatingSystem.csv",
+                          type = "sectoral", where = "brick")
 
   # map heating technologies
   euRefMap <- toolGetMapping("technologyMapping_EU_ReferenceScenario.csv",

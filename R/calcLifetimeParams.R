@@ -161,7 +161,8 @@ calcLifetimeParams <- function(subtype) {
                 mutate(hs = "sobo"))
 
       # all technologies included?
-      hs <- toolGetMapping("heatingSystem.csv", "sectoral", "brick")
+      hs <- toolGetMapping("heatingSystem.csv",
+                           type = "sectoral", where = "brick")
       params <- params %>%
         right_join(hs["hs"], by = "hs")
       if (any(is.na(params))) {
@@ -171,7 +172,8 @@ calcLifetimeParams <- function(subtype) {
 
 
       ### map to building types ####
-      typMap <- toolGetMapping("buildingType.csv", "sectoral", "brick")
+      typMap <- toolGetMapping("buildingType.csv",
+                               type = "sectoral", where = "brick")
       typMap <- stats::setNames(typMap[["subsector"]], typMap[["typ"]])
 
       params <- params %>%

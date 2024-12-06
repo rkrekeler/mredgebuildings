@@ -1013,19 +1013,20 @@ calcBuildingStock <- function(subtype = c("residential", "commercial")) {
   # sources that define the dimensions are read
 
   # vintage
-  vinMap <- toolGetMapping("refMap_mredgebuildings_vintage.csv", "sectoral",
-                           "mredgebuildings") %>%
+  vinMap <- toolGetMapping("refMap_mredgebuildings_vintage.csv",
+                           type = "sectoral", where = "mredgebuildings") %>%
     select(vintage = "variable", "vin") %>%
     unique()
 
   # heating system
-  hsMap <- toolGetMapping("refMap_mredgebuildings_heating.csv", "sectoral",
-                          "mredgebuildings") %>%
+  hsMap <- toolGetMapping("refMap_mredgebuildings_heating.csv",
+                          type = "sectoral", where = "mredgebuildings") %>%
     select(heating = "variable", "hs") %>%
     unique()
 
   # building shell
-  bsMap <- toolGetMapping("buildingShell.csv", "sectoral", "brick") %>%
+  bsMap <- toolGetMapping("buildingShell.csv",
+                          type = "sectoral", where = "brick") %>%
     select("bs", "initShare")
 
   # remap

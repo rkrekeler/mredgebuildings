@@ -183,7 +183,8 @@ calcCarrierPrices <- function() {
   data <- rbind(prices, emi)
 
   # all carriers included?
-  carrier <- toolGetMapping("heatingSystem.csv", "sectoral", "brick") %>%
+  carrier <- toolGetMapping("heatingSystem.csv",
+                            type = "sectoral", where = "brick") %>%
     select("carrier") %>%
     unique()
   data <- data %>%
